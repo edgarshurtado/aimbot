@@ -1,7 +1,10 @@
-import argparse
+import os
 import json
 from datetime import datetime, timedelta
-
+from time import sleep
+from apscheduler.schedulers.background import BackgroundScheduler
+from box_data import box_id, box_name, days_in_advance
+from constants import days_of_week_index
 
 from client import AimHarderClient
 from exceptions import (
@@ -9,6 +12,7 @@ from exceptions import (
     BoxClosed,
     MESSAGE_BOX_IS_CLOSED,
 )
+from telegram_logger import TelegramLogger
 
 
 def get_booking_goal_time(day: datetime, booking_goals):
@@ -38,7 +42,7 @@ def get_class_to_book(classes: list[dict], target_time: str, class_name: str):
 
 
 def main(
-    email, password, booking_goals, box_name, box_id, days_in_advance, family_id=None
+        email, password, booking_goals, box_name, box_id, days_in_advance, family_id=None
 ):
     target_day = datetime.today() + timedelta(days=days_in_advance)
     target_time, target_name = get_booking_goal_time(target_day, booking_goals)
@@ -50,30 +54,63 @@ def main(
     client.book_class(target_day, class_id, family_id)
 
 
-if __name__ == "__main__":
-    """
-    python src/main.py
-     --email your.email@mail.com
-     --password 1234
-     --box-name lahuellacrossfit
-     --box-id 3984
-     --booking-goal '{"0":{"time": "1815", "name": "Provenza"}}'
-     --family-id 123456
-    """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--email", required=True, type=str)
-    parser.add_argument("--password", required=True, type=str)
-    parser.add_argument("--booking-goals", required=True, type=json.loads)
-    parser.add_argument("--box-name", required=True, type=str)
-    parser.add_argument("--box-id", required=True, type=int)
-    parser.add_argument("--days-in-advance", required=True, type=int, default=3)
-    parser.add_argument(
-        "--family-id",
-        required=False,
-        type=int,
-        default=None,
-        help="ID of the family member (optional)",
+def execution(email, password, target_time, class_name):
+    client = AimHarderClient(
+        email=email, password=password, box_id=box_id, box_name=box_name
     )
-    args = parser.parse_args()
-    input = {key: value for key, value in args.__dict__.items() if value != ""}
-    main(**input)
+    target_day = datetime.today() + timedelta(days=days_in_advance)
+    classes = client.get_classes(target_day)
+    class_id = get_class_to_book(classes, target_time, class_name)
+    client.book_class(target_day, class_id)
+
+    hour = int(target_time[0:2])
+    minute = int(target_time[2:4])
+    print(f'class booked for {email}: {class_name} {hour}:{minute}')
+    TelegramLogger().send_message(f'💪 class booked for {email}: {class_name} {hour}:{minute}')
+
+
+def schedule_execution(day_of_week_execution, class_data):
+    hour = int(class_data['time'][0:2])
+    minute = int(class_data['time'][2:4])
+    class_name = class_data["name"]
+    print(
+        f'register task for class {class_name} on day {day_of_week_str}, {hour}:{'{:0<2}'.format(minute)}')
+    scheduler.add_job(
+        execution,
+        trigger='cron',
+        hour=int(class_data['time'][0:2]),
+        minute=int(class_data['time'][2:4]),
+        day_of_week=day_of_week_execution,
+        kwargs=dict(
+            email=user["email"],
+            password=user["password"],
+            target_time=class_data["time"],
+            class_name=class_data["name"],
+        )
+    )
+
+def load_schedule():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, 'schedule.json')
+
+    with open(file_path, 'r') as f:
+        return json.load(f)
+
+if __name__ == "__main__":
+    scheduler = BackgroundScheduler()
+    scheduler.start()
+    user_schedules = load_schedule()
+    for user in user_schedules:
+        print(f'\nRegister tasks for user {user["email"]}')
+        for day_of_week_str, classes_data in user["bookingGoals"].items():
+            day_of_week_execution = (days_of_week_index[day_of_week_str] - days_in_advance) % 7
+            for class_data in classes_data:
+                schedule_execution(day_of_week_execution, class_data)
+
+    print('-----------------------------------------------------------------')
+
+    print('Server started')
+
+
+    while True:
+        sleep(1)

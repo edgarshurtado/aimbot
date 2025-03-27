@@ -20,7 +20,7 @@ tests: venv format/check
 	PYTHONPATH=src venv/bin/pytest src/tests
 
 docker/build:
-	docker build --no-cache	--tag=fitbot .
+	docker build --no-cache	--tag=aimbot .
 
 docker/tests:
-	 docker run fitbot /bin/sh -c 'make tests'
+	 docker run aimbot /bin/sh -c 'make tests'

@@ -1,3 +1,5 @@
 venv
 __pycache__
 .idea
+src/schedule.json
+src/box_data.py
