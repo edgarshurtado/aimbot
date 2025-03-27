@@ -12,6 +12,7 @@ from exceptions import (
     BoxClosed,
     MESSAGE_BOX_IS_CLOSED,
 )
+from src.telegram_logger import TelegramBot
 from telegram_logger import TelegramLogger
 
 
@@ -109,8 +110,4 @@ if __name__ == "__main__":
 
     print('-----------------------------------------------------------------')
 
-    print('Server started')
-
-
-    while True:
-        sleep(1)
+    TelegramBot().run()
