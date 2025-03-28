@@ -1,9 +1,7 @@
-import asyncio
 import os
 import json
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.date import DateTrigger
 
 from box_data import box_id, box_name, days_in_advance
 from constants import days_of_week_index
@@ -19,19 +17,6 @@ from src.telegram_logger import TelegramBot
 from telegram_logger import TelegramLogger
 
 
-def get_booking_goal_time(day: datetime, booking_goals):
-    """Get the booking goal that satisfies the given day of the week"""
-    try:
-        return (
-            booking_goals[str(day.weekday())]["time"],
-            booking_goals[str(day.weekday())]["name"],
-        )
-    except KeyError:  # did not find a matching booking goal
-        raise NoBookingGoal(
-            f"There is no booking-goal for {day.strftime('%A, %Y-%m-%d')}."
-        )
-
-
 def get_class_to_book(classes: list[dict], target_time: str, class_name: str):
     if not classes or len(classes) == 0:
         raise BoxClosed(MESSAGE_BOX_IS_CLOSED)
@@ -43,19 +28,6 @@ def get_class_to_book(classes: list[dict], target_time: str, class_name: str):
             f"No class with the text `{class_name}` in its name at time `{target_time}`"
         )
     return _class[0]["id"]
-
-
-def main(
-        email, password, booking_goals, box_name, box_id, days_in_advance, family_id=None
-):
-    target_day = datetime.today() + timedelta(days=days_in_advance)
-    target_time, target_name = get_booking_goal_time(target_day, booking_goals)
-    client = AimHarderClient(
-        email=email, password=password, box_id=box_id, box_name=box_name
-    )
-    classes = client.get_classes(target_day, family_id)
-    class_id = get_class_to_book(classes, target_time, target_name)
-    client.book_class(target_day, class_id, family_id)
 
 
 def execution(email, password, target_time, class_name):
