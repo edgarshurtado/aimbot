@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 from datetime import datetime, timedelta
@@ -92,18 +93,6 @@ def schedule_recurrent_execution(day_of_week_execution, class_data, user):
         )
     )
 
-def schedule_unique_execution(date: datetime, class_name, user):
-    scheduler.add_job(
-        execution,
-        trigger=DateTrigger(run_date=date - timedelta(days=days_in_advance)),
-        kwargs=dict(
-            email=user["email"],
-            password=user["password"],
-            target_time=date.strftime('%H%M'),
-            class_name=class_name,
-        )
-    )
-
 def load_schedule():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, 'schedule.json')
@@ -114,6 +103,10 @@ def load_schedule():
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     scheduler.start()
+    booking_scheduler = BookingScheduler()
+    booking_scheduler.start()
+    telegram_bot = TelegramBot(booking_scheduler)
+
     user_schedules = load_schedule()
     for schedule in user_schedules:
         user = schedule["user"]
@@ -123,14 +116,11 @@ if __name__ == "__main__":
             for class_data in classes_data:
                 schedule_recurrent_execution(day_of_week_execution, class_data, user)
         for unique_booking_goal in schedule["bookingGoals"]:
-            schedule_unique_execution(
+            booking_scheduler.schedule_unique_execution(
                 date=datetime.strptime(unique_booking_goal["datetime"], "%Y-%m-%d %H:%M"),
                 class_name=unique_booking_goal["name"],
-                user=user
+                user_id=user["id"],
+                cb=lambda text: telegram_bot.send_message(text)
             )
 
-    print('-----------------------------------------------------------------')
-
-    booking_scheduler = BookingScheduler()
-    booking_scheduler.start()
-    TelegramBot(booking_scheduler).run()
+    telegram_bot.run()

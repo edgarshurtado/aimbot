@@ -3,7 +3,7 @@ import json
 from datetime import datetime, timedelta
 
 import requests
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from booking_scheduler import BookingScheduler
 from src.box_data import days_in_advance
@@ -27,12 +27,16 @@ class TelegramBot:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             level=logging.INFO
         )
-        self.__application = ApplicationBuilder().token("7837134549:AAFIHT8FjRQKiJ2Yb0ZrHcP8dFtgJce-fjw").build()
+        self.__token = "7837134549:AAFIHT8FjRQKiJ2Yb0ZrHcP8dFtgJce-fjw"
+        self.__application = ApplicationBuilder().token(self.__token).build()
         self.__register_handlers()
         self.__scheduler = booking_scheduler
 
     def run(self):
         self.__application.run_polling()
+
+    async def send_message(self, message: str):
+        await self.__application.bot.send_message(chat_id=-1002328222855, text=message)
 
     def __register_handlers(self):
         self.__application.add_handler(CommandHandler('schedule', self.__schedule_handler))
