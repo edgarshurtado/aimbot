@@ -1,7 +1,6 @@
 import os
 import json
 from datetime import datetime, timedelta
-from time import sleep
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 
@@ -14,6 +13,7 @@ from exceptions import (
     BoxClosed,
     MESSAGE_BOX_IS_CLOSED,
 )
+from src.booking_scheduler import BookingScheduler
 from src.telegram_logger import TelegramBot
 from telegram_logger import TelegramLogger
 
@@ -95,7 +95,7 @@ def schedule_recurrent_execution(day_of_week_execution, class_data, user):
 def schedule_unique_execution(date: datetime, class_name, user):
     scheduler.add_job(
         execution,
-        trigger=DateTrigger(run_date=date),
+        trigger=DateTrigger(run_date=date - timedelta(days=days_in_advance)),
         kwargs=dict(
             email=user["email"],
             password=user["password"],
@@ -131,4 +131,6 @@ if __name__ == "__main__":
 
     print('-----------------------------------------------------------------')
 
-    TelegramBot().run()
+    booking_scheduler = BookingScheduler()
+    booking_scheduler.start()
+    TelegramBot(booking_scheduler).run()
