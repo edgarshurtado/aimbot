@@ -3,6 +3,8 @@ import json
 from datetime import datetime, timedelta
 from time import sleep
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.date import DateTrigger
+
 from box_data import box_id, box_name, days_in_advance
 from constants import days_of_week_index
 
@@ -70,7 +72,7 @@ def execution(email, password, target_time, class_name):
     TelegramLogger().send_message(f'💪 class booked for {email}: {class_name} {hour}:{minute}')
 
 
-def schedule_execution(day_of_week_execution, class_data):
+def schedule_recurrent_execution(day_of_week_execution, class_data, user):
     hour = int(class_data['time'][0:2])
     minute = int(class_data['time'][2:4])
     class_name = class_data["name"]
@@ -90,6 +92,18 @@ def schedule_execution(day_of_week_execution, class_data):
         )
     )
 
+def schedule_unique_execution(date: datetime, class_name, user):
+    scheduler.add_job(
+        execution,
+        trigger=DateTrigger(run_date=date),
+        kwargs=dict(
+            email=user["email"],
+            password=user["password"],
+            target_time=date.strftime('%H%M'),
+            class_name=class_name,
+        )
+    )
+
 def load_schedule():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, 'schedule.json')
@@ -101,12 +115,19 @@ if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     scheduler.start()
     user_schedules = load_schedule()
-    for user in user_schedules:
+    for schedule in user_schedules:
+        user = schedule["user"]
         print(f'\nRegister tasks for user {user["email"]}')
-        for day_of_week_str, classes_data in user["bookingGoals"].items():
+        for day_of_week_str, classes_data in schedule["recurrentBookingGoals"].items():
             day_of_week_execution = (days_of_week_index[day_of_week_str] - days_in_advance) % 7
             for class_data in classes_data:
-                schedule_execution(day_of_week_execution, class_data)
+                schedule_recurrent_execution(day_of_week_execution, class_data, user)
+        for unique_booking_goal in schedule["bookingGoals"]:
+            schedule_unique_execution(
+                date=datetime.strptime(unique_booking_goal["datetime"], "%Y-%m-%d %H:%M"),
+                class_name=unique_booking_goal["name"],
+                user=user
+            )
 
     print('-----------------------------------------------------------------')
 

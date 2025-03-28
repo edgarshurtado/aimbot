@@ -39,8 +39,13 @@ class TelegramBot:
     async def __schedule_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(script_dir, 'schedule.json')
-
         with open(file_path, 'r') as f:
             schedules = json.load(f)
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=json.dumps(schedules))
+            user_schedules = next(user_schedule for user_schedule in schedules if user_schedule["user"]["id"] == update.effective_user.id)
+            await context.bot.send_message(chat_id=update.effective_chat.id,
+                                           text=f'Recurrent bookings:\n'
+                                                f'{json.dumps(user_schedules['recurrentBookingGoals'], indent=4)}'
+                                                f'\n\nSingle bookings:\n'
+                                                f'{json.dumps(user_schedules['bookingGoals'], indent=4)}'
+                                           )
 
