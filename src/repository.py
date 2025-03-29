@@ -41,10 +41,17 @@ class JsonRepository:
     def __find_booking_schedule(self, user_id, new_booking_goal):
         user_booking_data = self.__find_user_schedule_configuration(user_id)['bookingGoals']
         return next((booking_goal for booking_goal in user_booking_data if
-                    self.__booking_goals_are_the_same(booking_goal, new_booking_goal)), None)
+                     self.__booking_goals_are_the_same(booking_goal, new_booking_goal)), None)
 
     @staticmethod
     def __booking_goals_are_the_same(booking_goal_1, booking_goal_2):
         return (booking_goal_1["name"] == booking_goal_2["name"] and
                 booking_goal_1["datetime"] == booking_goal_2["datetime"])
 
+    def delete_booking_from_user(self, user_id, job_id):
+        user_schedule_configuration = self.__find_user_schedule_configuration(user_id)
+        user_booking_goals = user_schedule_configuration['bookingGoals']
+        user_schedule_configuration['bookingGoals'] = [booking_goal for booking_goal in
+                                                       user_booking_goals if
+                                                       booking_goal['job_id'] != job_id]
+        self.__save()
