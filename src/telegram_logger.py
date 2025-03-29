@@ -75,6 +75,7 @@ class TelegramBot:
 
     async def __book_class_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         [day_and_month, hour, class_name] = context.args
+        class_name = class_name.upper()
 
         now = datetime.now()
         full_date = day_and_month + f'-{now.year}'
