@@ -69,7 +69,7 @@ class TelegramBot:
         for idx, bookingSchedule in enumerate(user_schedule_config["bookingGoals"]):
            response_text += f'{idx + 1}. {bookingSchedule["datetime"]} {bookingSchedule["name"]}'
 
-        response_text = response_text if response_text != '' else "You don't have any class scheduled yet"
+        response_text = response_text if response_text != '' else "You don't have any class booking scheduled yet"
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                        text=response_text)
 
