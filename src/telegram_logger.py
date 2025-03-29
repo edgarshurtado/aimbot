@@ -41,19 +41,39 @@ class TelegramBot:
         await self.__application.bot.send_message(chat_id=-1002328222855, text=message)
 
     def __register_handlers(self):
+        self.__application.add_handler(CommandHandler('start', self.__start_handler))
         self.__application.add_handler(CommandHandler('schedule', self.__schedule_handler))
-        self.__application.add_handler(CommandHandler('add', self.__book_class))
+        self.__application.add_handler(CommandHandler('add', self.__book_class_handler))
+        self.__application.add_handler(CommandHandler('remove', self.__remove_booking_handler))
+
+    async def __start_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+        if self.__repository.get_user_schedule_configuration(update.effective_user.id) is None:
+            await context.bot.send_message(
+                chat_id=context.effective_chat.id,
+                text="You don't have power here!"
+            )
+            return
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Welcome to Monkey Aim Bot!\n\n"
+            "This is a pre-alpha version, so don't be too harsh on me if I fail on something 🙈\n\n"
+            "To start booking classes use the command '/add'\n\n"
+            "Don't forget, this will be our little secret 🤫"
+        )
 
     async def __schedule_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_schedule_config = self.__repository.get_user_schedule_configuration(update.effective_user.id)
-        await context.bot.send_message(chat_id=update.effective_chat.id,
-                                       text=f'Recurrent bookings:\n'
-                                            f'{json.dumps(user_schedule_config['recurrentBookingGoals'], indent=4)}'
-                                            f'\n\nSingle bookings:\n'
-                                            f'{json.dumps(user_schedule_config['bookingGoals'], indent=4)}'
-                                       )
+        response_text = ''
+        for idx, bookingSchedule in enumerate(user_schedule_config["bookingGoals"]):
+           response_text += f'{idx + 1}. {bookingSchedule["datetime"]} {bookingSchedule["name"]}'
 
-    async def __book_class(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        response_text = response_text if response_text != '' else "You don't have any class scheduled yet"
+        await context.bot.send_message(chat_id=update.effective_chat.id,
+                                       text=response_text)
+
+    async def __book_class_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         [day_and_month, hour, class_name] = context.args
 
         now = datetime.now()
@@ -73,3 +93,18 @@ class TelegramBot:
             text=f'class booking scheduled for {user}\n'
                  f'{booking_date.strftime("%d/%m %H:%M")}'
         )
+
+    async def __remove_booking_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        [job_to_delete_idx] = context.args
+        job_to_delete_idx = int(job_to_delete_idx) - 1
+
+        user_booking_jobs = self.__repository.get_user_schedule_configuration(update.effective_user.id)['bookingGoals']
+        selected_job = user_booking_jobs[job_to_delete_idx]
+        self.__scheduler.remove_unique_execution(selected_job['job_id'])
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text='Scheduled booking removed'
+        )
+
+

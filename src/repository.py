@@ -17,11 +17,13 @@ class JsonRepository:
         return copy.deepcopy(self.__find_user_schedule_configuration(user_id))
 
     def add_booking_to_user(self, user_id, booking_goal):
-        if self.__is_booking_already_scheduled(user_id, booking_goal):
-            return
-
         user_schedule_data = self.__find_user_schedule_configuration(user_id)
-        user_schedule_data['bookingGoals'].append(booking_goal)
+        already_registered_booking = self.__find_booking_schedule(user_id, booking_goal)
+        if already_registered_booking is not None:
+            already_registered_booking.update({'job_id': booking_goal['job_id']})
+        else:
+            user_schedule_data['bookingGoals'].append(booking_goal)
+
         self.__save()
 
     def load(self):
@@ -34,12 +36,12 @@ class JsonRepository:
             file.write(json_dump)
 
     def __find_user_schedule_configuration(self, user_id):
-        return next(data for data in self.__data if data['user']['id'] == user_id)
+        return next((data for data in self.__data if data['user']['id'] == user_id), None)
 
-    def __is_booking_already_scheduled(self, user_id, new_booking_goal):
+    def __find_booking_schedule(self, user_id, new_booking_goal):
         user_booking_data = self.__find_user_schedule_configuration(user_id)['bookingGoals']
         return next((booking_goal for booking_goal in user_booking_data if
-                    self.__booking_goals_are_the_same(booking_goal, new_booking_goal)), None) is not None
+                    self.__booking_goals_are_the_same(booking_goal, new_booking_goal)), None)
 
     @staticmethod
     def __booking_goals_are_the_same(booking_goal_1, booking_goal_2):
