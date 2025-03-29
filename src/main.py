@@ -13,6 +13,7 @@ from exceptions import (
     MESSAGE_BOX_IS_CLOSED,
 )
 from src.booking_scheduler import BookingScheduler
+from src.repository import JsonRepository
 from src.telegram_logger import TelegramBot
 from telegram_logger import TelegramLogger
 
@@ -75,9 +76,11 @@ def load_schedule():
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     scheduler.start()
-    booking_scheduler = BookingScheduler()
+
+    repository = JsonRepository()
+    booking_scheduler = BookingScheduler(repository)
     booking_scheduler.start()
-    telegram_bot = TelegramBot(booking_scheduler)
+    telegram_bot = TelegramBot(booking_scheduler, repository)
 
     user_schedules = load_schedule()
     for schedule in user_schedules:
@@ -89,7 +92,7 @@ if __name__ == "__main__":
                 schedule_recurrent_execution(day_of_week_execution, class_data, user)
         for unique_booking_goal in schedule["bookingGoals"]:
             booking_scheduler.schedule_unique_execution(
-                date=datetime.strptime(unique_booking_goal["datetime"], "%Y-%m-%d %H:%M"),
+                date=datetime.strptime(unique_booking_goal["datetime"], "%d-%m-%Y %H:%M"),
                 class_name=unique_booking_goal["name"],
                 user_id=user["id"],
                 cb=lambda text: telegram_bot.send_message(text)

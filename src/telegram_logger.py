@@ -1,12 +1,13 @@
-import logging
 import json
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime
 
 import requests
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
+
 from booking_scheduler import BookingScheduler
-from src.box_data import days_in_advance
+from src.repository import JsonRepository
 
 
 class TelegramLogger:
@@ -22,7 +23,7 @@ class TelegramLogger:
 
 
 class TelegramBot:
-    def __init__(self, booking_scheduler: BookingScheduler):
+    def __init__(self, booking_scheduler: BookingScheduler, repository: JsonRepository):
         logging.basicConfig(
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             level=logging.INFO
@@ -31,6 +32,7 @@ class TelegramBot:
         self.__application = ApplicationBuilder().token(self.__token).build()
         self.__register_handlers()
         self.__scheduler = booking_scheduler
+        self.__repository = repository
 
     def run(self):
         self.__application.run_polling()
@@ -42,9 +44,8 @@ class TelegramBot:
         self.__application.add_handler(CommandHandler('schedule', self.__schedule_handler))
         self.__application.add_handler(CommandHandler('add', self.__book_class))
 
-
     async def __schedule_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user_schedule_config = self.__scheduler.get_user_schedule_configuration(update.effective_user.id)
+        user_schedule_config = self.__repository.get_user_schedule_configuration(update.effective_user.id)
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                        text=f'Recurrent bookings:\n'
                                             f'{json.dumps(user_schedule_config['recurrentBookingGoals'], indent=4)}'
@@ -60,13 +61,13 @@ class TelegramBot:
         booking_date = datetime.strptime(f'{full_date} {hour}', '%d-%m-%Y %H:%M')
 
         self.__scheduler.schedule_unique_execution(
-            date=booking_date - timedelta(days=days_in_advance),
+            date=booking_date,
             class_name=class_name,
             user_id=update.effective_user.id,
             cb=lambda text: context.bot.send_message(chat_id=update.effective_chat.id, text=text)
         )
 
-        user = self.__scheduler.get_user_schedule_configuration(update.effective_user.id)['user']['email']
+        user = self.__repository.get_user_schedule_configuration(update.effective_user.id)['user']['email']
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=f'class booking scheduled for {user}\n'

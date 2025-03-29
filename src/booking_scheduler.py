@@ -2,26 +2,25 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 from box_data import box_id, box_name, days_in_advance
-import os
-import json
 from client import AimHarderClient
 from exceptions import (
     NoBookingGoal,
     BoxClosed,
     MESSAGE_BOX_IS_CLOSED,
 )
+from src.repository import JsonRepository
 
 
 class BookingScheduler:
-    def __init__(self):
+    def __init__(self, repository: JsonRepository):
         self.__scheduler = BackgroundScheduler()
-        self.__schedules_configuration = self.__load_schedules_configuration()
+        self.__repository = repository
 
     def start(self):
         self.__scheduler.start()
 
     def schedule_unique_execution(self, date: datetime, class_name, user_id, cb):
-        self.__scheduler.add_job(
+        job = self.__scheduler.add_job(
             self.__execution,
             trigger=DateTrigger(run_date=date - timedelta(days=days_in_advance)),
             kwargs=dict(
@@ -32,11 +31,15 @@ class BookingScheduler:
             )
         )
 
-    def get_user_schedule_configuration(self, user_id):
-        return next(data for data in self.__schedules_configuration if data['user']['id'] == user_id)
+        self.__repository.add_booking_to_user(user_id, {
+            'datetime': date.strftime('%d-%m-%Y %H:%M'),
+            'name': class_name,
+            'job_id': job.id
+        })
+
 
     def __execution(self, user_id, target_time, class_name, cb):
-        user = self.get_user_schedule_configuration(user_id)['user']
+        user = self.__repository.get_user_schedule_configuration(user_id)['user']
         email = user['email']
         password = user['password']
 
@@ -64,11 +67,3 @@ class BookingScheduler:
                 f"No class with the text `{class_name}` in its name at time `{target_time}`"
             )
         return _class[0]["id"]
-
-    @staticmethod
-    def __load_schedules_configuration():
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(script_dir, 'schedule.json')
-
-        with open(file_path, 'r') as f:
-             return json.load(f)
