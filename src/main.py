@@ -1,6 +1,6 @@
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from box_data import box_id, box_name, days_in_advance
@@ -50,8 +50,9 @@ def schedule_recurrent_execution(day_of_week_execution, class_data, user):
     hour = int(class_data['time'][0:2])
     minute = int(class_data['time'][2:4])
     class_name = class_data["name"]
+    class_time = time(hour, minute)
     print(
-        f'register task for class {class_name} on day {day_of_week_str}, {hour}:{'{:0<2}'.format(minute)}')
+        f'register task for class {class_name} on day {day_of_week_str}, {class_time.strftime("%H:%M")}')
     scheduler.add_job(
         execution,
         trigger='cron',
