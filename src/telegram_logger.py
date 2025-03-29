@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 
 from booking_scheduler import BookingScheduler
-from src.repository import JsonRepository
+from repository import JsonRepository
 
 
 class TelegramLogger:

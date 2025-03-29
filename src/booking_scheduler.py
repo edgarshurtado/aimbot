@@ -8,7 +8,7 @@ from exceptions import (
     BoxClosed,
     MESSAGE_BOX_IS_CLOSED,
 )
-from src.repository import JsonRepository
+from repository import JsonRepository
 
 
 class BookingScheduler:

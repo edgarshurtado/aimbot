@@ -12,10 +12,9 @@ from exceptions import (
     BoxClosed,
     MESSAGE_BOX_IS_CLOSED,
 )
-from src.booking_scheduler import BookingScheduler
-from src.repository import JsonRepository
-from src.telegram_logger import TelegramBot
-from telegram_logger import TelegramLogger
+from booking_scheduler import BookingScheduler
+from repository import JsonRepository
+from telegram_logger import TelegramBot, TelegramLogger
 
 
 def get_class_to_book(classes: list[dict], target_time: str, class_name: str):
