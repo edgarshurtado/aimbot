@@ -50,7 +50,7 @@ class TelegramBot:
 
         if self.__repository.get_user_schedule_configuration(update.effective_user.id) is None:
             await context.bot.send_message(
-                chat_id=context.effective_chat.id,
+                chat_id=update.effective_chat.id,
                 text="You don't have power here! Ask the master for permission\n\n Your id is:" + str(context.effective_user.id)
             )
             return
