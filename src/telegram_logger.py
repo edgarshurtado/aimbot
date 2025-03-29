@@ -101,11 +101,12 @@ class TelegramBot:
 
         user_booking_jobs = self.__repository.get_user_schedule_configuration(update.effective_user.id)['bookingGoals']
         selected_job = user_booking_jobs[job_to_delete_idx]
-        self.__scheduler.remove_unique_execution(selected_job['job_id'])
+        self.__scheduler.remove_unique_execution(update.effective_user.id, selected_job['job_id'])
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text='Scheduled booking removed'
         )
+
 
 

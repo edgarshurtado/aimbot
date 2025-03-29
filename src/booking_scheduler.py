@@ -37,8 +37,9 @@ class BookingScheduler:
             'job_id': job.id
         })
 
-    def remove_unique_execution(self, job_id):
+    def remove_unique_execution(self, user_id, job_id):
         self.__scheduler.remove_job(job_id)
+        self.__repository.delete_booking_from_user(user_id, job_id)
 
     def __execution(self, user_id, target_time, class_name, cb):
         user = self.__repository.get_user_schedule_configuration(user_id)['user']
