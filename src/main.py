@@ -96,7 +96,7 @@ if __name__ == "__main__":
                 date=datetime.strptime(unique_booking_goal["datetime"], "%d-%m-%Y %H:%M"),
                 class_name=unique_booking_goal["name"],
                 user_id=user["id"],
-                cb=lambda text: asyncio.create_task(telegram_bot.send_message(text))
+                cb=lambda text: asyncio.create_task(telegram_bot.send_message(chat_id=user["id"], message=text))
             )
 
     telegram_bot.run()

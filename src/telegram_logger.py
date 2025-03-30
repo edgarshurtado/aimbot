@@ -37,8 +37,8 @@ class TelegramBot:
     def run(self):
         self.__application.run_polling()
 
-    async def send_message(self, message: str):
-        await self.__application.bot.send_message(chat_id=-1002328222855, text=message)
+    async def send_message(self, chat_id: int, message: str):
+        await self.__application.bot.send_message(chat_id=chat_id, text=message)
 
     def __register_handlers(self):
         self.__application.add_handler(CommandHandler('start', self.__start_handler))
