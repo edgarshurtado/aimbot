@@ -63,3 +63,12 @@ class JsonRepository:
                                                        user_booking_goals if
                                                        booking_goal['job_id'] != job_id]
         self.__save()
+
+    def find_job_id(self, user_id, class_date: datetime, class_name):
+        user_schedule_configuration = self.__find_user_schedule_configuration(user_id)
+        user_booking_goals = user_schedule_configuration['bookingGoals']
+        return next((
+            booking_goal['job_id'] for booking_goal in
+            user_booking_goals if
+            booking_goal['name'] != class_name and datetime.strptime(booking_goal['datetime'], '%d-%m-%Y %H:%M') == class_date
+        ), None)

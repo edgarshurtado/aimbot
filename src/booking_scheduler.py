@@ -25,7 +25,7 @@ class BookingScheduler:
             trigger=DateTrigger(run_date=date - timedelta(days=days_in_advance)),
             kwargs=dict(
                 user_id=user_id,
-                target_time=date.strftime('%H%M'),
+                class_date=date,
                 class_name=class_name,
                 cb=cb
             )
@@ -41,10 +41,11 @@ class BookingScheduler:
         self.__scheduler.remove_job(job_id)
         self.__repository.delete_booking_from_user(user_id, job_id)
 
-    def __execution(self, user_id, target_time, class_name, cb):
+    def __execution(self, user_id, class_date, class_name, cb):
         user = self.__repository.get_user_schedule_configuration(user_id)['user']
         email = user['email']
         password = user['password']
+        target_time = class_date.strftime('%H%M')
 
         client = AimHarderClient(
             email=email, password=password, box_id=box_id, box_name=box_name
@@ -54,9 +55,11 @@ class BookingScheduler:
         class_id = self.__get_class_to_book(classes, target_time, class_name)
         client.book_class(target_day, class_id)
 
-        hour = int(target_time[0:2])
-        minute = int(target_time[2:4])
-        cb(f'class booked for {email}: {class_name} {hour}:{minute}')
+        job_id = self.__repository.find_job_id(user_id, class_date, class_name)
+        if job_id:
+            self.remove_unique_execution(user_id, job_id)
+
+        cb(f'class booked for {email}: {class_name} {class_date.strftime("%H:%M")}')
 
     @staticmethod
     def __get_class_to_book(classes: list[dict], target_time: str, class_name: str):
