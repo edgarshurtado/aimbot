@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -37,8 +38,12 @@ class TelegramBot:
     def run(self):
         self.__application.run_polling()
 
-    async def send_message(self, chat_id: int, message: str):
-        await self.__application.bot.send_message(chat_id=chat_id, text=message)
+    def send_message(self, chat_id: int, message: str):
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.__application.bot.send_message(chat_id=chat_id, text=message))
+        except RuntimeError:
+            asyncio.run(self.__application.bot.send_message(chat_id=chat_id, text=message))
 
     def __register_handlers(self):
         self.__application.add_handler(CommandHandler('start', self.__start_handler))
