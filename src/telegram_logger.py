@@ -90,7 +90,7 @@ class TelegramBot:
             date=booking_date,
             class_name=class_name,
             user_id=update.effective_user.id,
-            cb=lambda text: context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+            cb=lambda text: self.send_message(chat_id=update.effective_chat.id, message=text)
         )
 
         user = self.__repository.get_user_schedule_configuration(update.effective_user.id)['user']['email']
