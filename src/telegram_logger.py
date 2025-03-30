@@ -72,7 +72,7 @@ class TelegramBot:
         user_schedule_config = self.__repository.get_user_schedule_configuration(update.effective_user.id)
         response_text = ''
         for idx, bookingSchedule in enumerate(user_schedule_config["bookingGoals"]):
-           response_text += f'{idx + 1}. {bookingSchedule["datetime"]} {bookingSchedule["name"]}'
+           response_text += f'{idx + 1}. {bookingSchedule["datetime"]} {bookingSchedule["name"]}\n'
 
         response_text = response_text if response_text != '' else "You don't have any class booking scheduled yet"
         await context.bot.send_message(chat_id=update.effective_chat.id,
