@@ -22,7 +22,7 @@ class JsonRepository:
     def add_booking_to_user(self, user_id, booking_goal):
         user_schedule_data = self.__find_user_schedule_configuration(user_id)
         already_registered_booking = self.__find_booking_schedule(user_id, booking_goal)
-        already_registered_booking_datetime = datetime.strptime(already_registered_booking['datetime'], '%d-%m-%Y %H:%M')
+        already_registered_booking_datetime = datetime.strptime(already_registered_booking['datetime'], '%d-%m-%Y %H:%M') if already_registered_booking else None
         if already_registered_booking and  already_registered_booking_datetime < (datetime.now() + timedelta(days=days_in_advance)):
             self.delete_booking_from_user(user_id, already_registered_booking['job_id'])
             return
