@@ -3,7 +3,7 @@ import json
 import os
 from datetime import datetime, timedelta
 
-from src.box_data import days_in_advance
+from box_data import days_in_advance
 
 
 class JsonRepository:
