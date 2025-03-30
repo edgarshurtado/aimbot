@@ -57,7 +57,7 @@ class BookingScheduler:
 
         job_id = self.__repository.find_job_id(user_id, class_date, class_name)
         if job_id:
-            self.remove_unique_execution(user_id, job_id)
+            self.__repository.delete_booking_from_user(user_id, job_id)
 
         cb(f'class booked for {email}: {class_name} {class_date.strftime("%H:%M")}')
 
