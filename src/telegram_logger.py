@@ -1,10 +1,9 @@
 import asyncio
-import json
 import logging
 from datetime import datetime
 
 import requests
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 
 from booking_scheduler import BookingScheduler
