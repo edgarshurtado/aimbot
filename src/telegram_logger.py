@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 
 import requests
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 
 from booking_scheduler import BookingScheduler
@@ -39,10 +39,12 @@ class TelegramBot:
 
     def send_message(self, chat_id: int, message: str):
         try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.__application.bot.send_message(chat_id=chat_id, text=message))
+            loop = asyncio.get_event_loop()
         except RuntimeError:
-            asyncio.run(self.__application.bot.send_message(chat_id=chat_id, text=message))
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        loop.run_until_complete(self.__application.bot.send_message(chat_id=chat_id, text=message))
 
     def __register_handlers(self):
         self.__application.add_handler(CommandHandler('start', self.__start_handler))
