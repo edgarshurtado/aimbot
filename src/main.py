@@ -51,7 +51,7 @@ def schedule_recurrent_execution(day_of_week_execution, class_data, user):
     class_name = class_data["name"]
     class_time = time(hour, minute)
     print(
-        f'register task for class {class_name} on day {day_of_week_str}, {class_time.strftime("%H:%M")}')
+        f'register task for class {class_name} on day {day_of_week_execution}, {class_time.strftime("%H:%M")}')
     scheduler.add_job(
         execution,
         trigger='cron',
