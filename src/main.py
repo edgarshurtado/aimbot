@@ -73,6 +73,21 @@ def load_schedule():
     with open(file_path, 'r') as f:
         return json.load(f)
 
+def load_user_schedule(user):
+    print(f'\nRegister tasks for user {user["email"]}')
+    for day_of_week_str, classes_data in schedule["recurrentBookingGoals"].items():
+        day_of_week_execution = (days_of_week_index[day_of_week_str] - days_in_advance) % 7
+        for class_data in classes_data:
+            schedule_recurrent_execution(day_of_week_execution, class_data, user)
+    for unique_booking_goal in schedule["bookingGoals"]:
+        booking_scheduler.schedule_unique_execution(
+            date=datetime.strptime(unique_booking_goal["datetime"], "%d-%m-%Y %H:%M"),
+            class_name=unique_booking_goal["name"],
+            user_id=user["id"],
+            cb=lambda text: telegram_bot.send_message(chat_id=user["id"], message=text)
+        )
+
+
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     scheduler.start()
@@ -84,18 +99,6 @@ if __name__ == "__main__":
 
     user_schedules = load_schedule()
     for schedule in user_schedules:
-        user = schedule["user"]
-        print(f'\nRegister tasks for user {user["email"]}')
-        for day_of_week_str, classes_data in schedule["recurrentBookingGoals"].items():
-            day_of_week_execution = (days_of_week_index[day_of_week_str] - days_in_advance) % 7
-            for class_data in classes_data:
-                schedule_recurrent_execution(day_of_week_execution, class_data, user)
-        for unique_booking_goal in schedule["bookingGoals"]:
-            booking_scheduler.schedule_unique_execution(
-                date=datetime.strptime(unique_booking_goal["datetime"], "%d-%m-%Y %H:%M"),
-                class_name=unique_booking_goal["name"],
-                user_id=user["id"],
-                cb=lambda text: telegram_bot.send_message(chat_id=user["id"], message=text)
-            )
+        load_user_schedule(schedule["user"])
 
     telegram_bot.run()
