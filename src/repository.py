@@ -39,9 +39,8 @@ class JsonRepository:
             return json.load(f)
 
     def __save(self):
-        json_dump = json.dumps(self.__data, indent=4)
         with open(self.__file_path, 'w', encoding='utf-8') as file:
-            file.write(json_dump)
+            file.write(json.dumps(self.__data, indent=4))
 
     def __find_user_schedule_configuration(self, user_id):
         return next((data for data in self.__data if data['user']['id'] == user_id), None)
