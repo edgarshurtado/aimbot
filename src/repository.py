@@ -69,5 +69,5 @@ class JsonRepository:
         return next((
             booking_goal['job_id'] for booking_goal in
             user_booking_goals if
-            booking_goal['name'] != class_name and datetime.strptime(booking_goal['datetime'], '%d-%m-%Y %H:%M') == class_date
+            booking_goal['name'] == class_name and datetime.strptime(booking_goal['datetime'], '%d-%m-%Y %H:%M') == class_date
         ), None)
