@@ -22,6 +22,10 @@ class JsonRepository:
         return copy.deepcopy(self.__find_user_schedule_configuration(user_id))
 
     def add_booking_to_user(self, user_id, booking_goal) -> Result[None, UserNotFound]:
+        user_schedule_data = self.__find_user_schedule_configuration(user_id)
+        if user_schedule_data is None:
+            return Result(success=False, error=UserNotFound())
+
         already_registered_booking = self.__find_booking_schedule(user_id, booking_goal)
         already_registered_booking_datetime = datetime.strptime(already_registered_booking['datetime'], '%d-%m-%Y %H:%M') if already_registered_booking else None
         if already_registered_booking and  already_registered_booking_datetime < (datetime.now() + timedelta(days=days_in_advance)):
@@ -31,9 +35,6 @@ class JsonRepository:
         if already_registered_booking is not None:
             already_registered_booking.update({'job_id': booking_goal['job_id']})
         else:
-            user_schedule_data = self.__find_user_schedule_configuration(user_id)
-            if user_schedule_data is None:
-                return Result(success=False, error=UserNotFound())
             user_schedule_data['bookingGoals'].append(booking_goal)
 
         self.__save()
