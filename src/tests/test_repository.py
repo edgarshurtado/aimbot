@@ -28,7 +28,7 @@ class TestRepository(TestCase):
         job_id = str(uuid.uuid4())
         datetime_str = (datetime.now() + timedelta(days=1)).strftime('%d-%m-%Y %H:%M')
 
-        self.repository.add_booking_to_user(
+        booking_added = self.repository.add_booking_to_user(
             user_id=self.test_user_id,
             booking_goal={
                 "datetime": datetime_str,
@@ -36,6 +36,8 @@ class TestRepository(TestCase):
                 'job_id': job_id
             }
         )
+        self.assertTrue(booking_added.success)
+
         user_schedule = self.repository.get_user_schedule_configuration(self.test_user_id)
         added_booking_goal = next(bookingGoal for bookingGoal in user_schedule['bookingGoals'] if bookingGoal['job_id'] == job_id)
         self.assertEqual(added_booking_goal["name"], "OPEN")
