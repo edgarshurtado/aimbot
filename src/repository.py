@@ -8,13 +8,14 @@ from box_data import days_in_advance
 
 class JsonRepository:
 
-    def __init__(self):
+    def __init__(self, db_file_name='schedule.json'):
+        self.db_file_name = db_file_name
         self.__data = self.load()
 
     @property
     def __file_path(self):
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(script_dir, 'schedule.json')
+        return os.path.join(script_dir, self.db_file_name)
 
     def get_user_schedule_configuration(self, user_id):
         return copy.deepcopy(self.__find_user_schedule_configuration(user_id))
@@ -71,3 +72,9 @@ class JsonRepository:
             user_booking_goals if
             booking_goal['name'] == class_name and datetime.strptime(booking_goal['datetime'], '%d-%m-%Y %H:%M') == class_date
         ), None)
+
+    def delete_all_user_booking_goals(self, user_id):
+        user_schedule_configuration = self.__find_user_schedule_configuration(user_id)
+        user_schedule_configuration['bookingGoals'] = []
+        self.__save()
+

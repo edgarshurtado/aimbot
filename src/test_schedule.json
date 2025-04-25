@@ -1,0 +1,11 @@
+[
+    {
+        "user": {
+            "email": "some-email@gmail.com",
+            "password": "password",
+            "id": 66666666
+        },
+        "bookingGoals": [],
+        "recurrentBookingGoals": {}
+    }
+]
