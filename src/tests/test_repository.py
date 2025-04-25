@@ -40,3 +40,21 @@ class TestRepository(TestCase):
         added_booking_goal = next(bookingGoal for bookingGoal in user_schedule['bookingGoals'] if bookingGoal['job_id'] == job_id)
         self.assertEqual(added_booking_goal["name"], "OPEN")
         self.assertEqual(added_booking_goal["datetime"], datetime_str)
+
+    def test_remove_booking_from_user(self):
+        job_id = str(uuid.uuid4())
+        datetime_str = (datetime.now() + timedelta(days=1)).strftime('%d-%m-%Y %H:%M')
+
+        self.repository.add_booking_to_user(
+            user_id=self.test_user_id,
+            booking_goal={
+                "datetime": datetime_str,
+                "name": "WOD",
+                'job_id': job_id
+            }
+        )
+        self.repository.delete_booking_from_user(self.test_user_id, job_id)
+
+        user_schedule = self.repository.get_user_schedule_configuration(self.test_user_id)
+        self.assertEqual(len(user_schedule['bookingGoals']), 0)
+
