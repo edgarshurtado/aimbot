@@ -2,6 +2,10 @@ import os
 import json
 from datetime import datetime, timedelta, time
 from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from box_data import box_id, box_name, days_in_advance
 from constants import days_of_week_index

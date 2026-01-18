@@ -1,0 +1,12 @@
+{
+    "python.defaultInterpreterPath": "/home/rumil/repos/aimbot/venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "terminal.integrated.defaultProfile.windows": "WSL",
+    "terminal.integrated.profiles.windows": {
+        "WSL": {
+            "path": "wsl.exe",
+            "args": ["-d", "Ubuntu-20.04"]
+        }
+    }
+}

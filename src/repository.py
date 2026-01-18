@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 
 from box_data import days_in_advance
-from src.error_handling import Result, UserNotFound
+from error_handling import Result, UserNotFound
 
 
 class JsonRepository:
