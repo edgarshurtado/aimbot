@@ -53,3 +53,13 @@ Tests use `unittest.mock.patch` for HTTP mocking and `freezegun` for time. All e
 - **black** with experimental string processing
 - **flake8** for linting
 - Python 3.10+ type hints (`str | None` style)
+
+## Rules
+
+### Git & Branching
+- Always create feature branches off `master` — never commit directly to `master`
+- Make atomic commits that are logically self-contained; when executing a multi-task plan, each task gets its own commit
+- Claude Code may commit freely without asking for permission, as long as the current branch is not `master`
+
+### Testing
+- Every new feature or module must include tests
