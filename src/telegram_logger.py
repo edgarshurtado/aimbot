@@ -132,7 +132,7 @@ class TelegramBot:
 
     def __generate_class_name_keyboard(self):
         """Generate a keyboard with predefined class names"""
-        class_names = ["WOD", "GYMNASTICS", "OPEN", "HALTEROFILIA"]
+        class_names = ["WOD", "GYMNASTIC", "OPEN", "HALTEROFILIA"]
         keyboard = [[name] for name in class_names]
         return ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
 
@@ -219,7 +219,7 @@ class TelegramBot:
     async def __class_name_selected_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle class name selection and complete the booking"""
         class_name = update.message.text.upper()
-        valid_class_names = ["WOD", "GYMNASTICS", "OPEN", "HALTEROFILIA"]
+        valid_class_names = ["WOD", "GYMNASTIC", "OPEN", "HALTEROFILIA"]
         
         # Validate class name
         if class_name not in valid_class_names:
