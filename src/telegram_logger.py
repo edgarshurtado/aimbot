@@ -266,7 +266,8 @@ class TelegramBot:
         context.user_data.clear()
         return ConversationHandler.END
 
-    async def __cancel_booking_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    @staticmethod
+    async def __cancel_booking_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Cancel the booking process"""
         context.user_data.clear()
         await context.bot.send_message(
