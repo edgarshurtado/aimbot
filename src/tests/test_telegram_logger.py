@@ -60,16 +60,20 @@ class TestGetTelegramToken:
         with patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN_DEV": "dev_token"}, clear=True):
             assert get_telegram_token() == "dev_token"
 
-    def test_raises_when_dev_token_missing(self):
+    def test_raises_error_when_dev_token_is_missing(self):
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValueError):
                 get_telegram_token()
 
 
 class TestTelegramLogger:
+    @pytest.fixture(autouse=True)
+    def patch_get_telegram_token(self):
+        with patch("telegram_logger.get_telegram_token", return_value="my_token"):
+            yield
+
     def test_send_message_posts_to_correct_url(self):
-        with patch("telegram_logger.get_telegram_token", return_value="my_token"), \
-             patch("telegram_logger.requests.post") as mock_post:
+        with patch("telegram_logger.requests.post") as mock_post:
             logger = TelegramLogger()
             logger.send_message("hello")
 
@@ -80,18 +84,16 @@ class TestTelegramLogger:
             assert params.get("text") == "hello"
 
     def test_send_message_passes_group_id(self):
-        with patch("telegram_logger.get_telegram_token", return_value="my_token"), \
-             patch("telegram_logger.requests.post") as mock_post:
+        with patch("telegram_logger.requests.post") as mock_post:
             logger = TelegramLogger()
             logger.send_message("hello")
 
             params = mock_post.call_args.kwargs.get("params", {})
-            assert params.get("chat_id") == -1002328222855
+            assert params.get("chat_id") == logger.group_id
 
     def test_bot_api_url_contains_token(self):
-        with patch("telegram_logger.get_telegram_token", return_value="my_token"):
-            logger = TelegramLogger()
-            assert "my_token" in logger.bot_api_url
+        logger = TelegramLogger()
+        assert "my_token" in logger.bot_api_url
 
 
 class TestTelegramBotInit:
