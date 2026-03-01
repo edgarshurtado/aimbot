@@ -288,7 +288,7 @@ Recurrent booking code (APScheduler cron jobs, `schedule_recurrent_execution`, `
 
 ## Section 5 — Testing Strategy
 
-All tests use **pytest** with `unittest.mock` for mocking and `freezegun` for time control.
+All tests use **pytest** with **pytest-mock** for mocking and `freezegun` for time control. Mocks are created via the `mocker` fixture (`mocker.Mock(spec=...)`) rather than importing from `unittest.mock` directly.
 
 ### New: Use Case Tests
 ```
@@ -302,11 +302,11 @@ Each use case test mocks the ports (`IUserRepository`, `IBookingRepository`, `IJ
 
 Example:
 ```python
-def test_schedule_booking_creates_job_and_persists_goal():
-    mock_user_repo    = Mock(spec=IUserRepository)
-    mock_booking_repo = Mock(spec=IBookingRepository)
-    mock_scheduler    = Mock(spec=IJobScheduler)
-    mock_platform     = Mock(spec=IGymPlatformConfig)
+def test_schedule_booking_creates_job_and_persists_goal(mocker):
+    mock_user_repo    = mocker.Mock(spec=IUserRepository)
+    mock_booking_repo = mocker.Mock(spec=IBookingRepository)
+    mock_scheduler    = mocker.Mock(spec=IJobScheduler)
+    mock_platform     = mocker.Mock(spec=IGymPlatformConfig)
     # Note: no mock for ExecuteBookingUseCase — schedule does not depend on it
     ...
 ```
