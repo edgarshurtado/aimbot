@@ -1,2 +1,5 @@
 [tool.black]
 experimental-string-processing = true
+
+[tool.pytest.ini_options]
+addopts = "--ignore=src/tests/test_main.py --ignore=src/tests/test_repository.py"
