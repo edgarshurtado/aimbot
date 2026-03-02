@@ -1,108 +1,58 @@
-import os
-import json
-from datetime import datetime, timedelta, time
-from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-from box_data import box_id, box_name, days_in_advance
-from constants import days_of_week_index
-
-from client import AimHarderClient
-from exceptions import (
-    NoBookingGoal,
-    BoxClosed,
-    MESSAGE_BOX_IS_CLOSED,
-)
-from booking_scheduler import BookingScheduler
-from repository import JsonRepository
-from telegram_logger import TelegramBot, TelegramLogger
+from box_data import box_id, box_name  # noqa: E402
+from application.use_cases.execute_booking import ExecuteBookingUseCase  # noqa: E402
+from application.use_cases.remove_booking import RemoveBookingUseCase  # noqa: E402
+from application.use_cases.schedule_booking import ScheduleBookingUseCase  # noqa: E402
+from infrastructure.aimharder.client_factory import AimHarderClientFactory  # noqa: E402
+from infrastructure.persistence.json_repository import JsonRepository  # noqa: E402
+from infrastructure.scheduling.apscheduler import APSchedulerAdapter  # noqa: E402
+from infrastructure.telegram.bot import TelegramBot  # noqa: E402
+from infrastructure.telegram.group_notifier import TelegramGroupNotifier  # noqa: E402
+from infrastructure.telegram.user_notifier import TelegramUserNotifier  # noqa: E402
 
 
-def get_class_to_book(classes: list[dict], target_time: str, class_name: str):
-    if not classes or len(classes) == 0:
-        raise BoxClosed(MESSAGE_BOX_IS_CLOSED)
+def bootstrap():
+    json_repo = JsonRepository()
+    factory = AimHarderClientFactory(box_id=box_id, box_name=box_name)
 
-    classes = list(filter(lambda _class: target_time in _class["timeid"], classes))
-    _class = list(filter(lambda _class: class_name in _class["className"], classes))
-    if len(_class) == 0:
-        raise NoBookingGoal(
-            f"No class with the text `{class_name}` in its name at time `{target_time}`"
-        )
-    return _class[0]["id"]
+    telegram_bot = TelegramBot(user_repo=json_repo)
+    user_notifier = TelegramUserNotifier(send_fn=telegram_bot.send_message)
+    group_notifier = TelegramGroupNotifier()
 
-
-def execution(email, password, target_time, class_name):
-    client = AimHarderClient(
-        email=email, password=password, box_id=box_id, box_name=box_name
+    execute_uc = ExecuteBookingUseCase(
+        json_repo, json_repo, factory, user_notifier, group_notifier
     )
-    target_day = datetime.today() + timedelta(days=days_in_advance)
-    classes = client.get_classes(target_day)
-    class_id = get_class_to_book(classes, target_time, class_name)
-    client.book_class(target_day, class_id)
+    apscheduler = APSchedulerAdapter(on_job_execute=execute_uc.execute)
+    schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, factory)
+    remove_uc = RemoveBookingUseCase(json_repo, apscheduler)
 
-    hour = int(target_time[0:2])
-    minute = int(target_time[2:4])
-    print(f'class booked for {email}: {class_name} {hour}:{minute}')
-    TelegramLogger().send_message(f'💪 class booked for {email}: {class_name} {hour}:{minute}')
+    telegram_bot.set_use_cases(schedule_uc, remove_uc)
 
+    # Startup recovery: re-schedule persisted booking goals
+    for user in json_repo.get_all_users():
+        for goal in user.booking_goals:
+            schedule_uc.execute(
+                user_id=user.id,
+                booking_date=goal.booking_date,
+                class_name=goal.name,
+            )
 
-def schedule_recurrent_execution(day_of_week_execution, class_data, user):
-    hour = int(class_data['time'][0:2])
-    minute = int(class_data['time'][2:4])
-    class_name = class_data["name"]
-    class_time = time(hour, minute)
-    print(
-        f'register task for class {class_name} on day {day_of_week_execution}, {class_time.strftime("%H:%M")}')
-    scheduler.add_job(
-        execution,
-        trigger='cron',
-        hour=int(class_data['time'][0:2]),
-        minute=int(class_data['time'][2:4]),
-        day_of_week=day_of_week_execution,
-        kwargs=dict(
-            email=user["email"],
-            password=user["password"],
-            target_time=class_data["time"],
-            class_name=class_data["name"],
-        )
-    )
+    apscheduler.start()
 
-def load_schedule():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(script_dir, 'schedule.json')
-
-    with open(file_path, 'r') as f:
-        return json.load(f)
-
-def load_user_schedule(user):
-    print(f'\nRegister tasks for user {user["email"]}')
-    for day_of_week_str, classes_data in schedule["recurrentBookingGoals"].items():
-        day_of_week_execution = (days_of_week_index[day_of_week_str] - days_in_advance) % 7
-        for class_data in classes_data:
-            schedule_recurrent_execution(day_of_week_execution, class_data, user)
-    for unique_booking_goal in schedule["bookingGoals"]:
-        booking_scheduler.schedule_unique_execution(
-            date=datetime.strptime(unique_booking_goal["datetime"], "%d-%m-%Y %H:%M"),
-            class_name=unique_booking_goal["name"],
-            user_id=user["id"],
-            cb=lambda text: telegram_bot.send_message(chat_id=user["id"], message=text)
-        )
+    return {
+        "json_repo": json_repo,
+        "factory": factory,
+        "telegram_bot": telegram_bot,
+        "execute_uc": execute_uc,
+        "apscheduler": apscheduler,
+        "schedule_uc": schedule_uc,
+        "remove_uc": remove_uc,
+    }
 
 
 if __name__ == "__main__":
-    scheduler = BackgroundScheduler()
-    scheduler.start()
-
-    repository = JsonRepository()
-    booking_scheduler = BookingScheduler(repository)
-    booking_scheduler.start()
-    telegram_bot = TelegramBot(booking_scheduler, repository)
-
-    user_schedules = load_schedule()
-    for schedule in user_schedules:
-        load_user_schedule(schedule["user"])
-
-    telegram_bot.run()
+    app = bootstrap()
+    app["telegram_bot"].run()
