@@ -156,6 +156,44 @@ def test_find_booking_goal_not_found(repository):
     assert result is None
 
 
+# ── adversarial edge cases ────────────────────────────────────────────────────
+
+def test_dedup_does_not_fire_when_only_name_matches(repository):
+    """Same name, different booking_date → should NOT dedup."""
+    goal1 = BookingGoal(booking_date=datetime(2027, 4, 1, 10, 0), name="WOD", job_id="job-a")
+    goal2 = BookingGoal(booking_date=datetime(2027, 4, 2, 10, 0), name="WOD", job_id="job-b")
+    repository.add_booking_goal(66666666, goal1)
+    repository.add_booking_goal(66666666, goal2)
+
+    bookings = repository.get_user_bookings(66666666)
+    assert len(bookings) == 2
+
+
+def test_dedup_does_not_fire_when_only_date_matches(repository):
+    """Same booking_date, different name → should NOT dedup."""
+    goal1 = BookingGoal(booking_date=datetime(2027, 4, 1, 10, 0), name="WOD", job_id="job-a")
+    goal2 = BookingGoal(booking_date=datetime(2027, 4, 1, 10, 0), name="OPEN", job_id="job-b")
+    repository.add_booking_goal(66666666, goal1)
+    repository.add_booking_goal(66666666, goal2)
+
+    bookings = repository.get_user_bookings(66666666)
+    assert len(bookings) == 2
+
+
+def test_remove_nonexistent_job_id_is_safe(repository):
+    """Removing a non-existent job_id should not raise."""
+    repository.remove_booking_goal(66666666, "does-not-exist")
+    assert repository.get_user_bookings(66666666) == []
+
+
+def test_get_user_returns_deep_copy(repository):
+    """Mutating the returned User must not affect internal state."""
+    user = repository.get_user(66666666)
+    user.email = "mutated@evil.com"
+    user2 = repository.get_user(66666666)
+    assert user2.email == "some-email@gmail.com"
+
+
 # ── serialization roundtrip ───────────────────────────────────────────────────
 
 def test_datetime_serialization_roundtrip(tmp_path):
