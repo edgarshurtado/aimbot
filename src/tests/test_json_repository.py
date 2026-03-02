@@ -8,7 +8,6 @@ from infrastructure.persistence.json_repository import JsonRepository
 
 @pytest.fixture
 def repository(tmp_path):
-    import json
     import shutil
 
     src = "src/test_schedule.json"
@@ -197,7 +196,6 @@ def test_get_user_returns_deep_copy(repository):
 # ── serialization roundtrip ───────────────────────────────────────────────────
 
 def test_datetime_serialization_roundtrip(tmp_path):
-    import json
     import shutil
 
     src = "src/test_schedule.json"

@@ -22,12 +22,12 @@ def mocked_bootstrap(mocker):
     mock_repo_cls = mocker.patch("main.JsonRepository")
     mock_factory_cls = mocker.patch("main.AimHarderClientFactory")
     mock_bot_cls = mocker.patch("main.TelegramBot")
-    mock_user_notifier_cls = mocker.patch("main.TelegramUserNotifier")
-    mock_group_notifier_cls = mocker.patch("main.TelegramGroupNotifier")
+    mocker.patch("main.TelegramUserNotifier")
+    mocker.patch("main.TelegramGroupNotifier")
     mock_execute_uc_cls = mocker.patch("main.ExecuteBookingUseCase")
     mock_apscheduler_cls = mocker.patch("main.APSchedulerAdapter")
     mock_schedule_uc_cls = mocker.patch("main.ScheduleBookingUseCase")
-    mock_remove_uc_cls = mocker.patch("main.RemoveBookingUseCase")
+    mocker.patch("main.RemoveBookingUseCase")
 
     # Configure mock instances
     mock_repo = mock_repo_cls.return_value
@@ -59,7 +59,7 @@ def mocked_bootstrap(mocker):
 def test_startup_recovery_no_users(mocker):
     mocker.patch("main.JsonRepository")
     mocker.patch("main.AimHarderClientFactory")
-    mock_bot_cls = mocker.patch("main.TelegramBot")
+    mocker.patch("main.TelegramBot")
     mocker.patch("main.TelegramUserNotifier")
     mocker.patch("main.TelegramGroupNotifier")
     mocker.patch("main.ExecuteBookingUseCase")

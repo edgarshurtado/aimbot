@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 
 from domain.models import GymClass
-from domain.ports.gym_client import IGymClient, IGymClientFactory, IGymPlatformConfig
+from domain.ports.gym_client import IGymClientFactory, IGymPlatformConfig
 from domain.exceptions import TooManyWrongAttempts, IncorrectCredentials, BookingFailed
 from infrastructure.aimharder.client import AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory

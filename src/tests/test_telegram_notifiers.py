@@ -1,5 +1,3 @@
-import pytest
-
 from domain.ports.notifier import IGroupNotifier, IUserNotifier
 from infrastructure.telegram.group_notifier import TelegramGroupNotifier
 from infrastructure.telegram.user_notifier import TelegramUserNotifier

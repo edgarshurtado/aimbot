@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import call
 
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.scheduler import IJobScheduler
@@ -26,7 +25,6 @@ def test_remove_booking_removes_job_and_goal(remove_booking):
 def test_remove_booking_calls_scheduler_before_repo(remove_booking):
     uc, booking_repo, scheduler = remove_booking
 
-    manager = scheduler._mock_children.get("remove_job") or scheduler
     call_order = []
     scheduler.remove_job.side_effect = lambda *a: call_order.append("scheduler")
     booking_repo.remove_booking_goal.side_effect = lambda *a: call_order.append("repo")

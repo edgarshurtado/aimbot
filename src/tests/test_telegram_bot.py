@@ -11,7 +11,7 @@ Each handler tests verifies delegation to use cases — no business logic inline
 """
 import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 from domain.models import BookingGoal, User
 from domain.ports.user_repository import IUserRepository
@@ -151,7 +151,7 @@ async def test_add_flow_invalid_time_retries(telegram_bot, mocker):
     update = _make_update(12345, mocker, text="25:99")
     context = _make_context(mocker, user_data={"selected_date": datetime(2027, 3, 15)})
 
-    result = await bot._TelegramBot__time_selected_handler(update, context)
+    await bot._TelegramBot__time_selected_handler(update, context)
 
     context.bot.send_message.assert_called_once()
     text = context.bot.send_message.call_args.kwargs.get("text", "")
