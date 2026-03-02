@@ -169,6 +169,41 @@ def test_book_class_server_error(mocker):
         client.book_class(datetime(2027, 3, 2), "42")
 
 
+# ── Adversarial edge cases ────────────────────────────────────────────────────
+
+def test_get_classes_normalizes_3digit_timeid(mocker):
+    """'900_60' → '09:00' (3-digit hour must be zero-padded)."""
+    _mock_login_success(mocker)
+    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+
+    get_resp = mocker.Mock()
+    get_resp.json.return_value = {
+        "bookings": [
+            {"id": "1", "timeid": "900_60", "className": "WOD", "plazasDisp": 2, "plazas": 10}
+        ]
+    }
+    mocker.patch("requests.Session.get", return_value=get_resp)
+
+    result = client.get_classes(datetime(2027, 3, 15))
+    assert result[0].time == "09:00"
+
+
+def test_get_classes_missing_plazas_defaults_to_zero(mocker):
+    """Missing plazasDisp/plazas should not crash — default to 0."""
+    _mock_login_success(mocker)
+    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+
+    get_resp = mocker.Mock()
+    get_resp.json.return_value = {
+        "bookings": [{"id": "5", "timeid": "1200_60", "className": "WOD"}]
+    }
+    mocker.patch("requests.Session.get", return_value=get_resp)
+
+    result = client.get_classes(datetime(2027, 3, 15))
+    assert result[0].spots_available == 0
+    assert result[0].max_spots == 0
+
+
 # ── Factory tests ─────────────────────────────────────────────────────────────
 
 def test_factory_create_returns_client(factory, mocker):
