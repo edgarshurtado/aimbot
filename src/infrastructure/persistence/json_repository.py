@@ -118,7 +118,7 @@ class JsonRepository(IUserRepository, IBookingRepository):
         if raw is None:
             return None
         date_str = booking_date.strftime(self._DATETIME_FMT)
-        for bg in raw.get("bookingGoals", []):
-            if bg["datetime"] == date_str and bg["name"] == class_name:
-                return self._raw_to_booking_goal(bg)
+        for bookinGoal in raw.get("bookingGoals", []):
+            if bookinGoal["datetime"] == date_str and bookinGoal["name"] == class_name:
+                return self._raw_to_booking_goal(bookinGoal)
         return None
