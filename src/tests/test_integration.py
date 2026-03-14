@@ -19,7 +19,7 @@ import pytest
 @pytest.fixture
 def schedule_file(tmp_path):
     """Copy test_schedule.json to a temp file and return the absolute path."""
-    src = "src/test_schedule.json"
+    src = "src/tests/test_schedule.json"
     dst = tmp_path / "test_schedule.json"
     shutil.copy(src, dst)
     return str(dst)
@@ -209,10 +209,10 @@ def test_apscheduler_fires_execute_handler():
 
 
 def test_json_repository_path_from_infrastructure_location():
-    """JsonRepository('test_schedule.json') resolves correctly from infrastructure/persistence/."""
+    """JsonRepository('tests/test_schedule.json') resolves correctly from infrastructure/persistence/."""
     from infrastructure.persistence.json_repository import JsonRepository
 
-    repo = JsonRepository("test_schedule.json")
+    repo = JsonRepository("tests/test_schedule.json")
 
     users = repo.get_all_users()
     assert isinstance(users, list)

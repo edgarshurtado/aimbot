@@ -19,7 +19,7 @@ mock_json_load = [
 
 class TestRepository(TestCase):
     def setUp(self):
-        self.repository = JsonRepository('test_schedule.json')
+        self.repository = JsonRepository('tests/test_schedule.json')
         self.test_user_id = 66666666
 
     def tearDown(self):

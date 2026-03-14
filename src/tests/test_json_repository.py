@@ -10,7 +10,7 @@ from infrastructure.persistence.json_repository import JsonRepository
 def repository(tmp_path):
     import shutil
 
-    src = "src/test_schedule.json"
+    src = "src/tests/test_schedule.json"
     dst = tmp_path / "test_schedule.json"
     shutil.copy(src, dst)
 
@@ -198,7 +198,7 @@ def test_get_user_returns_deep_copy(repository):
 def test_datetime_serialization_roundtrip(tmp_path):
     import shutil
 
-    src = "src/test_schedule.json"
+    src = "src/tests/test_schedule.json"
     dst = tmp_path / "test_schedule.json"
     shutil.copy(src, dst)
 
