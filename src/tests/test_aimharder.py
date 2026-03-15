@@ -178,8 +178,8 @@ def test_factory_create_returns_client(factory, http_mock):
     assert isinstance(client, AimHarderClient)
 
 
-def test_factory_booking_trigger_time(factory):
-    result = factory.booking_trigger_time(datetime(2027, 3, 15, 18, 30))
+def test_factory_booking_trigger_time_is_set_to_3_days_before(factory):
+    result = factory.booking_trigger_time(class_date=datetime(2027, 3, 15, 18, 30))
     assert result == datetime(2027, 3, 12, 18, 30)
 
 
