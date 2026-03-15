@@ -46,7 +46,7 @@ def test_get_classes_returns_gym_class_objects(http_mock):
 
     http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={
         "bookings": [
-            {"id": "42", "timeid": "1100_60", "className": "WOD", "plazasDisp": 5, "plazas": 20}
+            {"id": "42", "timeid": "1100_60", "className": "WOD", "ocupation": 15, "limit": 20}
         ]
     })
 
@@ -88,7 +88,7 @@ def test_get_classes_normalizes_timeid_to_hhmm(http_mock):
 
     http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={
         "bookings": [
-            {"id": "1", "timeid": "0830_60", "className": "OPEN", "plazasDisp": 3, "plazas": 15}
+            {"id": "1", "timeid": "0830_60", "className": "OPEN", "ocupation": 12, "limit": 15}
         ]
     })
 
@@ -147,7 +147,7 @@ def test_get_classes_normalizes_3digit_timeid(http_mock):
 
     http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={
         "bookings": [
-            {"id": "1", "timeid": "900_60", "className": "WOD", "plazasDisp": 2, "plazas": 10}
+            {"id": "1", "timeid": "900_60", "className": "WOD", "ocupation": 8, "limit": 10}
         ]
     })
 
@@ -165,8 +165,8 @@ def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
     })
 
     result = client.get_classes(datetime(2027, 3, 15))
-    assert result[0].spots_available == 0
     assert result[0].max_spots == 0
+    assert result[0].spots_available == 0
 
 
 # ── Factory tests ─────────────────────────────────────────────────────────────

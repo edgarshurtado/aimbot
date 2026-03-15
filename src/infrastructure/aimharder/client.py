@@ -55,8 +55,8 @@ class AimHarderClient(IGymClient):
                 id=str(b["id"]),
                 name=b["className"],
                 time=self._normalize_timeid(b["timeid"]),
-                spots_available=b.get("plazasDisp", 0),
-                max_spots=b.get("plazas", 0),
+                max_spots=b.get("limit", 0),
+                spots_available=b.get("limit", 0) - b.get("ocupation", 0),
             )
             for b in bookings
         ]
