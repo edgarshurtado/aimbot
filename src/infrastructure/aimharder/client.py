@@ -7,8 +7,8 @@ from requests import Session
 from constants import LOGIN_ENDPOINT, ERROR_TAG_ID, book_endpoint, classes_endpoint
 from domain.exceptions import (
     BookingFailed,
+    ErrorResponse,
     IncorrectCredentials,
-    TooManyWrongAttempts,
     MESSAGE_BOOKING_FAILED_NO_CREDIT,
     MESSAGE_BOOKING_FAILED_UNKNOWN,
 )
@@ -31,11 +31,10 @@ class AimHarderClient(IGymClient):
         )
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser").find(id=ERROR_TAG_ID)
-        if soup is not None:
-            if TooManyWrongAttempts.key_phrase in soup.text:
-                raise TooManyWrongAttempts
-            elif IncorrectCredentials.key_phrase in soup.text:
-                raise IncorrectCredentials
+        if soup is not None and soup.text:
+            if IncorrectCredentials.key_phrase in soup.text:
+                raise IncorrectCredentials(soup.text)
+            raise ErrorResponse(soup.text)
         return session
 
     @staticmethod

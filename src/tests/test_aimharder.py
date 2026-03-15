@@ -5,7 +5,7 @@ from datetime import datetime
 from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
 from domain.models import GymClass
 from domain.ports.gym_client import IGymClientFactory, IGymPlatformConfig
-from domain.exceptions import TooManyWrongAttempts, IncorrectCredentials, BookingFailed
+from domain.exceptions import ErrorResponse, IncorrectCredentials, BookingFailed
 from infrastructure.aimharder.client import AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory
 
@@ -26,16 +26,16 @@ def factory():
 
 # ── Login tests ───────────────────────────────────────────────────────────────
 
-def test_client_login_too_many_attempts(http_mock):
-    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">demasiadas veces</span></html>')
-    with pytest.raises(TooManyWrongAttempts):
-        AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
-
-
 def test_client_login_incorrect_credentials(http_mock):
-    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">incorrecto</span></html>')
+    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">Wrong email and/or password</span></html>')
     with pytest.raises(IncorrectCredentials):
         AimHarderClient("foo@bar.com", "wrongpass", BOX_ID, BOX_NAME)
+
+
+def test_client_login_unknown_error(http_mock):
+    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">some unexpected error</span></html>')
+    with pytest.raises(ErrorResponse):
+        AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
 
 # ── get_classes tests ─────────────────────────────────────────────────────────
