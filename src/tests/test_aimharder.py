@@ -157,7 +157,7 @@ def test_get_classes_normalizes_3digit_timeid(http_mock):
 
 
 def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
-    """Missing plazasDisp/plazas should not crash — default to 0."""
+    """Missing ocupation/limit should not crash — default to 0."""
     _mock_login_success(http_mock)
     client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
