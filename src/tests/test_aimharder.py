@@ -1,6 +1,8 @@
 import pytest
+import responses as rsps_lib
 from datetime import datetime
 
+from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
 from domain.models import GymClass
 from domain.ports.gym_client import IGymClientFactory, IGymPlatformConfig
 from domain.exceptions import TooManyWrongAttempts, IncorrectCredentials, BookingFailed
@@ -8,61 +10,45 @@ from infrastructure.aimharder.client import AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory
 
 
-def _mock_login_success(mocker):
-    """Patch requests.Session.post to return a successful login response."""
-    mock_resp = mocker.Mock()
-    mock_resp.content = b'<html><span id="loginErrors"></span></html>'
-    mock_resp.raise_for_status = mocker.Mock()
-    mocker.patch("requests.Session.post", return_value=mock_resp)
-    return mock_resp
+BOX_NAME = "themonkeybox"
+BOX_ID = 9824
+LOGIN_SUCCESS_BODY = b'<html><span id="loginErrors"></span></html>'
+
+
+def _mock_login_success(http_mock):
+    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=LOGIN_SUCCESS_BODY)
 
 
 @pytest.fixture
 def factory():
-    return AimHarderClientFactory(box_id=9824, box_name="themonkeybox")
+    return AimHarderClientFactory(box_id=BOX_ID, box_name=BOX_NAME)
 
 
 # ── Login tests ───────────────────────────────────────────────────────────────
 
-def test_client_login_success(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
-    assert client is not None
-
-
-def test_client_login_too_many_attempts(mocker):
-    mock_resp = mocker.Mock()
-    mock_resp.content = b'<html><span id="loginErrors">demasiadas veces</span></html>'
-    mock_resp.raise_for_status = mocker.Mock()
-    mocker.patch("requests.Session.post", return_value=mock_resp)
-
+def test_client_login_too_many_attempts(http_mock):
+    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">demasiadas veces</span></html>')
     with pytest.raises(TooManyWrongAttempts):
-        AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+        AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
 
-def test_client_login_incorrect_credentials(mocker):
-    mock_resp = mocker.Mock()
-    mock_resp.content = b'<html><span id="loginErrors">incorrecto</span></html>'
-    mock_resp.raise_for_status = mocker.Mock()
-    mocker.patch("requests.Session.post", return_value=mock_resp)
-
+def test_client_login_incorrect_credentials(http_mock):
+    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">incorrecto</span></html>')
     with pytest.raises(IncorrectCredentials):
-        AimHarderClient("foo@bar.com", "wrongpass", 9824, "themonkeybox")
+        AimHarderClient("foo@bar.com", "wrongpass", BOX_ID, BOX_NAME)
 
 
 # ── get_classes tests ─────────────────────────────────────────────────────────
 
-def test_get_classes_returns_gym_class_objects(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_get_classes_returns_gym_class_objects(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    get_resp = mocker.Mock()
-    get_resp.json.return_value = {
+    http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={
         "bookings": [
             {"id": "42", "timeid": "1100_60", "className": "WOD", "plazasDisp": 5, "plazas": 20}
         ]
-    }
-    mocker.patch("requests.Session.get", return_value=get_resp)
+    })
 
     result = client.get_classes(datetime(2027, 3, 15))
     assert isinstance(result, list)
@@ -76,41 +62,35 @@ def test_get_classes_returns_gym_class_objects(mocker):
     assert gym_class.max_spots == 20
 
 
-def test_get_classes_empty_bookings(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_get_classes_empty_bookings(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    get_resp = mocker.Mock()
-    get_resp.json.return_value = {"bookings": []}
-    mocker.patch("requests.Session.get", return_value=get_resp)
+    http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={"bookings": []})
 
     result = client.get_classes(datetime(2027, 3, 15))
     assert result == []
 
 
-def test_get_classes_no_bookings_key(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_get_classes_no_bookings_key(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    get_resp = mocker.Mock()
-    get_resp.json.return_value = {}
-    mocker.patch("requests.Session.get", return_value=get_resp)
+    http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={})
 
     result = client.get_classes(datetime(2027, 3, 15))
     assert result == []
 
 
-def test_get_classes_normalizes_timeid_to_hhmm(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_get_classes_normalizes_timeid_to_hhmm(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    get_resp = mocker.Mock()
-    get_resp.json.return_value = {
+    http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={
         "bookings": [
             {"id": "1", "timeid": "0830_60", "className": "OPEN", "plazasDisp": 3, "plazas": 15}
         ]
-    }
-    mocker.patch("requests.Session.get", return_value=get_resp)
+    })
 
     result = client.get_classes(datetime(2027, 3, 15))
     assert result[0].time == "08:30"
@@ -118,52 +98,41 @@ def test_get_classes_normalizes_timeid_to_hhmm(mocker):
 
 # ── book_class tests ──────────────────────────────────────────────────────────
 
-def test_book_class_success(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_book_class_success(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    post_resp = mocker.Mock()
-    post_resp.status_code = 200
-    post_resp.json.return_value = {}
-    mocker.patch("requests.Session.post", return_value=post_resp)
+    http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), json={}, status=200)
 
     result = client.book_class(datetime(2027, 3, 2), "42")
     assert result is None
 
 
-def test_book_class_no_credit(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_book_class_no_credit(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    post_resp = mocker.Mock()
-    post_resp.status_code = 200
-    post_resp.json.return_value = {"bookState": -2}
-    mocker.patch("requests.Session.post", return_value=post_resp)
+    http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), json={"bookState": -2}, status=200)
 
     with pytest.raises(BookingFailed):
         client.book_class(datetime(2027, 3, 2), "42")
 
 
-def test_book_class_error_response(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_book_class_error_response(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    post_resp = mocker.Mock()
-    post_resp.status_code = 200
-    post_resp.json.return_value = {"errorMssg": "some error"}
-    mocker.patch("requests.Session.post", return_value=post_resp)
+    http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), json={"errorMssg": "some error"}, status=200)
 
     with pytest.raises(BookingFailed):
         client.book_class(datetime(2027, 3, 2), "42")
 
 
-def test_book_class_server_error(mocker):
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+def test_book_class_server_error(http_mock):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    post_resp = mocker.Mock()
-    post_resp.status_code = 500
-    mocker.patch("requests.Session.post", return_value=post_resp)
+    http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), status=500)
 
     with pytest.raises(BookingFailed):
         client.book_class(datetime(2027, 3, 2), "42")
@@ -171,33 +140,29 @@ def test_book_class_server_error(mocker):
 
 # ── Adversarial edge cases ────────────────────────────────────────────────────
 
-def test_get_classes_normalizes_3digit_timeid(mocker):
+def test_get_classes_normalizes_3digit_timeid(http_mock):
     """'900_60' → '09:00' (3-digit hour must be zero-padded)."""
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    get_resp = mocker.Mock()
-    get_resp.json.return_value = {
+    http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={
         "bookings": [
             {"id": "1", "timeid": "900_60", "className": "WOD", "plazasDisp": 2, "plazas": 10}
         ]
-    }
-    mocker.patch("requests.Session.get", return_value=get_resp)
+    })
 
     result = client.get_classes(datetime(2027, 3, 15))
     assert result[0].time == "09:00"
 
 
-def test_get_classes_missing_plazas_defaults_to_zero(mocker):
+def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
     """Missing plazasDisp/plazas should not crash — default to 0."""
-    _mock_login_success(mocker)
-    client = AimHarderClient("foo@bar.com", "pass", 9824, "themonkeybox")
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
-    get_resp = mocker.Mock()
-    get_resp.json.return_value = {
+    http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={
         "bookings": [{"id": "5", "timeid": "1200_60", "className": "WOD"}]
-    }
-    mocker.patch("requests.Session.get", return_value=get_resp)
+    })
 
     result = client.get_classes(datetime(2027, 3, 15))
     assert result[0].spots_available == 0
@@ -206,8 +171,8 @@ def test_get_classes_missing_plazas_defaults_to_zero(mocker):
 
 # ── Factory tests ─────────────────────────────────────────────────────────────
 
-def test_factory_create_returns_client(factory, mocker):
-    _mock_login_success(mocker)
+def test_factory_create_returns_client(factory, http_mock):
+    _mock_login_success(http_mock)
     client = factory.create("foo@bar.com", "pass")
     assert isinstance(client, AimHarderClient)
 
