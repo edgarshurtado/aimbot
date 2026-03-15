@@ -8,6 +8,7 @@ from domain.ports.gym_client import IGymClientFactory, IGymPlatformConfig
 from domain.exceptions import ErrorResponse, IncorrectCredentials, BookingFailed
 from infrastructure.aimharder.client import AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory
+from infrastructure.aimharder.raw_booking import RawBooking
 
 
 BOX_NAME = "themonkeybox"
@@ -185,3 +186,37 @@ def test_factory_booking_trigger_time(factory):
 def test_factory_implements_both_interfaces(factory):
     assert isinstance(factory, IGymClientFactory)
     assert isinstance(factory, IGymPlatformConfig)
+
+
+# ── RawBooking tests ──────────────────────────────────────────────────────────
+
+def test_raw_booking_from_dict():
+    raw = RawBooking.from_dict({"id": 42, "className": "WOD", "timeid": "1100_60", "limit": 20, "ocupation": 15})
+    assert raw.id == "42"
+    assert raw.class_name == "WOD"
+    assert raw.timeid == "1100_60"
+    assert raw.limit == 20
+    assert raw.ocupation == 15
+
+
+def test_raw_booking_spots_available():
+    raw = RawBooking.from_dict({"id": "1", "className": "WOD", "timeid": "1100_60", "limit": 20, "ocupation": 15})
+    assert raw.spots_available == 5
+
+
+def test_raw_booking_missing_fields_default_to_zero():
+    raw = RawBooking.from_dict({"id": "1", "className": "WOD", "timeid": "1100_60"})
+    assert raw.limit == 0
+    assert raw.ocupation == 0
+    assert raw.spots_available == 0
+
+
+def test_raw_booking_to_gym_class():
+    raw = RawBooking.from_dict({"id": "42", "className": "WOD", "timeid": "1100_60", "limit": 20, "ocupation": 15})
+    gym_class = raw.to_gym_class()
+    assert isinstance(gym_class, GymClass)
+    assert gym_class.id == "42"
+    assert gym_class.name == "WOD"
+    assert gym_class.time == "11:00"
+    assert gym_class.max_spots == 20
+    assert gym_class.spots_available == 5

@@ -14,6 +14,7 @@ from domain.exceptions import (
 )
 from domain.models import GymClass
 from domain.ports.gym_client import IGymClient
+from infrastructure.aimharder.raw_booking import RawBooking
 
 
 class AimHarderClient(IGymClient):
@@ -37,29 +38,13 @@ class AimHarderClient(IGymClient):
             raise ErrorResponse(soup.text)
         return session
 
-    @staticmethod
-    def _normalize_timeid(timeid: str) -> str:
-        """Convert '1100_60' → '11:00', '0830_60' → '08:30'."""
-        raw = timeid.split("_")[0]  # e.g. '1100'
-        raw = raw.zfill(4)          # ensure 4 digits
-        return f"{raw[:2]}:{raw[2:]}"
-
     def get_classes(self, target_day: datetime) -> list[GymClass]:
         response = self._session.get(
             classes_endpoint(self._box_name),
             params={"box": self._box_id, "day": target_day.strftime("%Y%m%d")},
         )
         bookings = response.json().get("bookings") or []
-        return [
-            GymClass(
-                id=str(b["id"]),
-                name=b["className"],
-                time=self._normalize_timeid(b["timeid"]),
-                max_spots=b.get("limit", 0),
-                spots_available=b.get("limit", 0) - b.get("ocupation", 0),
-            )
-            for b in bookings
-        ]
+        return [RawBooking.from_dict(b).to_gym_class() for b in bookings]
 
     def book_class(self, target_day: datetime, class_id: str) -> None:
         response = self._session.post(
