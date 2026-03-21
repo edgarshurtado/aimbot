@@ -1,12 +1,11 @@
 from dataclasses import dataclass, field
-from datetime import datetime, time
+from datetime import datetime
 
 
 @dataclass
 class GymClass:
-    id: str
     name: str
-    start_time: time
+    scheduled_at: datetime
     spots_available: int
     max_spots: int
 
