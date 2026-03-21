@@ -37,8 +37,9 @@ class JsonRepository(IUserRepository, IBookingRepository):
     def _find_raw_user(self, user_id: int) -> dict | None:
         return next((d for d in self._data if d["user"]["id"] == user_id), None)
 
-    def _raw_to_booking_goal(self, raw: dict) -> BookingGoal:
+    def _raw_to_booking_goal(self, raw: dict, user_id: int) -> BookingGoal:
         return BookingGoal(
+            user_id=user_id,
             booking_date=datetime.strptime(raw["datetime"], self._DATETIME_FMT),
             name=raw["name"],
         )
@@ -51,8 +52,9 @@ class JsonRepository(IUserRepository, IBookingRepository):
 
     def _raw_to_user(self, raw_entry: dict) -> User:
         raw_user = raw_entry["user"]
+        user_id = raw_user["id"]
         booking_goals = [
-            self._raw_to_booking_goal(bg) for bg in raw_entry.get("bookingGoals", [])
+            self._raw_to_booking_goal(bg, user_id) for bg in raw_entry.get("bookingGoals", [])
         ]
         return User(
             id=raw_user["id"],
@@ -78,10 +80,10 @@ class JsonRepository(IUserRepository, IBookingRepository):
         raw = self._find_raw_user(user_id)
         if raw is None:
             return []
-        return [self._raw_to_booking_goal(bg) for bg in raw.get("bookingGoals", [])]
+        return [self._raw_to_booking_goal(bg, user_id) for bg in raw.get("bookingGoals", [])]
 
-    def add_booking_goal(self, user_id: int, goal: BookingGoal) -> Result:
-        raw = self._find_raw_user(user_id)
+    def add_booking_goal(self, goal: BookingGoal) -> Result:
+        raw = self._find_raw_user(goal.user_id)
         if raw is None:
             return Result(success=False, error=UserNotFound())
 
@@ -99,14 +101,14 @@ class JsonRepository(IUserRepository, IBookingRepository):
         self._save()
         return Result(success=True)
 
-    def remove_booking_goal(self, user_id: int, booking_date: datetime, class_name: str) -> None:
-        raw = self._find_raw_user(user_id)
+    def remove_booking_goal(self, goal: BookingGoal) -> None:
+        raw = self._find_raw_user(goal.user_id)
         if raw is None:
             return
-        date_str = booking_date.strftime(self._DATETIME_FMT)
+        date_str = goal.booking_date.strftime(self._DATETIME_FMT)
         raw["bookingGoals"] = [
             bg for bg in raw.get("bookingGoals", [])
-            if not (bg["datetime"] == date_str and bg["name"] == class_name)
+            if not (bg["datetime"] == date_str and bg["name"] == goal.name)
         ]
         self._save()
 
@@ -119,5 +121,5 @@ class JsonRepository(IUserRepository, IBookingRepository):
         date_str = booking_date.strftime(self._DATETIME_FMT)
         for bookinGoal in raw.get("bookingGoals", []):
             if bookinGoal["datetime"] == date_str and bookinGoal["name"] == class_name:
-                return self._raw_to_booking_goal(bookinGoal)
+                return self._raw_to_booking_goal(bookinGoal, user_id)
         return None

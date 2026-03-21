@@ -35,7 +35,7 @@ def bootstrap():
     for user in json_repo.get_all_users():
         for goal in user.booking_goals:
             schedule_uc.execute(
-                user_id=user.id,
+                user_id=goal.user_id,
                 booking_date=goal.booking_date,
                 class_name=goal.name,
             )

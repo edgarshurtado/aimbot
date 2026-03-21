@@ -56,10 +56,11 @@ def test_get_user_bookings_returns_empty_list(repository):
 
 def test_get_user_bookings_returns_booking_goal_objects(repository):
     goal = BookingGoal(
+        user_id=66666666,
         booking_date=datetime(2027, 1, 18, 18, 30),
         name="WOD",
     )
-    repository.add_booking_goal(66666666, goal)
+    repository.add_booking_goal(goal)
 
     result = repository.get_user_bookings(66666666)
     assert isinstance(result, list)
@@ -72,32 +73,35 @@ def test_get_user_bookings_returns_booking_goal_objects(repository):
 
 def test_add_booking_goal_succeeds_for_known_user(repository):
     goal = BookingGoal(
+        user_id=66666666,
         booking_date=datetime(2027, 1, 18, 18, 30),
         name="WOD",
     )
-    result = repository.add_booking_goal(66666666, goal)
+    result = repository.add_booking_goal(goal)
     assert result.success is True
 
     bookings = repository.get_user_bookings(66666666)
     assert len(bookings) == 1
+    assert bookings[0].user_id == 66666666
     assert bookings[0].name == "WOD"
     assert bookings[0].booking_date == datetime(2027, 1, 18, 18, 30)
 
 
 def test_add_booking_goal_fails_for_unknown_user(repository):
     goal = BookingGoal(
+        user_id=99999999,
         booking_date=datetime(2027, 1, 18, 18, 30),
         name="WOD",
     )
-    result = repository.add_booking_goal(99999999, goal)
+    result = repository.add_booking_goal(goal)
     assert result.success is False
     assert isinstance(result.error, UserNotFound)
 
 
 def test_add_booking_goal_dedup_does_not_duplicate(repository):
-    goal = BookingGoal(booking_date=datetime(2027, 3, 15, 10, 0), name="OPEN")
-    repository.add_booking_goal(66666666, goal)
-    repository.add_booking_goal(66666666, goal)
+    goal = BookingGoal(user_id=66666666, booking_date=datetime(2027, 3, 15, 10, 0), name="OPEN")
+    repository.add_booking_goal(goal)
+    repository.add_booking_goal(goal)
 
     bookings = repository.get_user_bookings(66666666)
     assert len(bookings) == 1
@@ -106,10 +110,10 @@ def test_add_booking_goal_dedup_does_not_duplicate(repository):
 # ── remove_booking_goal ───────────────────────────────────────────────────────
 
 def test_remove_booking_goal(repository):
-    goal = BookingGoal(booking_date=datetime(2027, 2, 10, 9, 0), name="WOD")
-    repository.add_booking_goal(66666666, goal)
+    goal = BookingGoal(user_id=66666666, booking_date=datetime(2027, 2, 10, 9, 0), name="WOD")
+    repository.add_booking_goal(goal)
 
-    repository.remove_booking_goal(66666666, datetime(2027, 2, 10, 9, 0), "WOD")
+    repository.remove_booking_goal(goal)
 
     bookings = repository.get_user_bookings(66666666)
     assert len(bookings) == 0
@@ -118,8 +122,8 @@ def test_remove_booking_goal(repository):
 # ── find_booking_goal ─────────────────────────────────────────────────────────
 
 def test_find_booking_goal_found(repository):
-    goal = BookingGoal(booking_date=datetime(2027, 5, 20, 9, 0), name="WOD")
-    repository.add_booking_goal(66666666, goal)
+    goal = BookingGoal(user_id=66666666, booking_date=datetime(2027, 5, 20, 9, 0), name="WOD")
+    repository.add_booking_goal(goal)
 
     result = repository.find_booking_goal(66666666, datetime(2027, 5, 20, 9, 0), "WOD")
     assert result is not None
@@ -135,10 +139,10 @@ def test_find_booking_goal_not_found(repository):
 
 def test_dedup_does_not_fire_when_only_name_matches(repository):
     """Same name, different booking_date → should NOT dedup."""
-    goal1 = BookingGoal(booking_date=datetime(2027, 4, 1, 10, 0), name="WOD")
-    goal2 = BookingGoal(booking_date=datetime(2027, 4, 2, 10, 0), name="WOD")
-    repository.add_booking_goal(66666666, goal1)
-    repository.add_booking_goal(66666666, goal2)
+    goal1 = BookingGoal(user_id=66666666, booking_date=datetime(2027, 4, 1, 10, 0), name="WOD")
+    goal2 = BookingGoal(user_id=66666666, booking_date=datetime(2027, 4, 2, 10, 0), name="WOD")
+    repository.add_booking_goal(goal1)
+    repository.add_booking_goal(goal2)
 
     bookings = repository.get_user_bookings(66666666)
     assert len(bookings) == 2
@@ -146,10 +150,10 @@ def test_dedup_does_not_fire_when_only_name_matches(repository):
 
 def test_dedup_does_not_fire_when_only_date_matches(repository):
     """Same booking_date, different name → should NOT dedup."""
-    goal1 = BookingGoal(booking_date=datetime(2027, 4, 1, 10, 0), name="WOD")
-    goal2 = BookingGoal(booking_date=datetime(2027, 4, 1, 10, 0), name="OPEN")
-    repository.add_booking_goal(66666666, goal1)
-    repository.add_booking_goal(66666666, goal2)
+    goal1 = BookingGoal(user_id=66666666, booking_date=datetime(2027, 4, 1, 10, 0), name="WOD")
+    goal2 = BookingGoal(user_id=66666666, booking_date=datetime(2027, 4, 1, 10, 0), name="OPEN")
+    repository.add_booking_goal(goal1)
+    repository.add_booking_goal(goal2)
 
     bookings = repository.get_user_bookings(66666666)
     assert len(bookings) == 2
@@ -157,7 +161,9 @@ def test_dedup_does_not_fire_when_only_date_matches(repository):
 
 def test_remove_nonexistent_goal_is_safe(repository):
     """Removing a non-existent goal should not raise."""
-    repository.remove_booking_goal(66666666, datetime(2099, 1, 1, 0, 0), "NONEXISTENT")
+    repository.remove_booking_goal(
+        BookingGoal(user_id=66666666, booking_date=datetime(2099, 1, 1, 0, 0), name="NONEXISTENT")
+    )
     assert repository.get_user_bookings(66666666) == []
 
 
@@ -180,10 +186,11 @@ def test_datetime_serialization_roundtrip(tmp_path):
 
     repo1 = JsonRepository(str(dst))
     goal = BookingGoal(
+        user_id=66666666,
         booking_date=datetime(2027, 12, 25, 14, 30),
         name="WOD",
     )
-    repo1.add_booking_goal(66666666, goal)
+    repo1.add_booking_goal(goal)
 
     # Fresh instance reads from disk
     repo2 = JsonRepository(str(dst))

@@ -13,6 +13,7 @@ class GymClass:
 
 @dataclass
 class BookingGoal:
+    user_id: int
     booking_date: datetime
     name: str
 

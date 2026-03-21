@@ -95,7 +95,7 @@ def test_schedule_then_remove_roundtrip(schedule_file):
 
 
     # After remove: user has 0 booking goals
-    remove_uc.execute(66666666, goal.booking_date, goal.name)
+    remove_uc.execute(goal)
     user_after = json_repo.get_user(66666666)
     assert len(user_after.booking_goals) == 0
 
@@ -193,8 +193,9 @@ def test_apscheduler_fires_execute_handler():
     try:
         run_at = datetime(2020, 1, 1, 0, 0, 0)  # past timestamp → fires immediately
         booking_date = datetime(2027, 6, 15, 10, 0)
+        from domain.models import BookingGoal
         apscheduler.schedule_job(
-            run_at, user_id=66666666, booking_date=booking_date, class_name="WOD"
+            run_at, goal=BookingGoal(user_id=66666666, booking_date=booking_date, name="WOD")
         )
         time_module.sleep(0.2)
     finally:
