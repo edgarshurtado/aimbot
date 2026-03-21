@@ -1,13 +1,13 @@
 from dataclasses import dataclass
+from datetime import time
 
 from domain.models import GymClass
 
 
-def _normalize_timeid(timeid: str) -> str:
-    """Convert '1100_60' → '11:00', '0830_60' → '08:30'."""
-    raw = timeid.split("_")[0]
-    raw = raw.zfill(4)
-    return f"{raw[:2]}:{raw[2:]}"
+def _normalize_timeid(timeid: str) -> time:
+    """Convert '1100_60' → time(11, 0), '0830_60' → time(8, 30)."""
+    raw = timeid.split("_")[0].zfill(4)
+    return time(int(raw[:2]), int(raw[2:]))
 
 
 @dataclass
@@ -36,7 +36,7 @@ class RawBooking:
         return GymClass(
             id=self.id,
             name=self.class_name,
-            time=_normalize_timeid(self.timeid),
+            start_time=_normalize_timeid(self.timeid),
             max_spots=self.limit,
             spots_available=self.spots_available,
         )

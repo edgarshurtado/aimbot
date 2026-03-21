@@ -33,14 +33,13 @@ class ExecuteBookingUseCase:
         if not classes:
             raise BoxClosed(MESSAGE_BOX_IS_CLOSED)
 
-        target_time = booking_date.strftime("%H:%M")
         matched = next(
-            (c for c in classes if c.time == target_time and class_name in c.name),
+            (c for c in classes if c.start_time == booking_date.time() and class_name in c.name),
             None,
         )
         if matched is None:
             raise NoBookingGoal(
-                f"No class '{class_name}' at {target_time} on {booking_date.date()}"
+                f"No class '{class_name}' at {booking_date.strftime('%H:%M')} on {booking_date.date()}"
             )
 
         client.book_class(booking_date, matched.id)

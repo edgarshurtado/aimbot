@@ -6,8 +6,8 @@ Telegram API) remain mocked.
 """
 import json
 import shutil
-import time
-from datetime import datetime
+import time as time_module
+from datetime import datetime, time
 from unittest.mock import MagicMock
 
 import pytest
@@ -150,7 +150,7 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
 
     mock_client = MagicMock()
     mock_client.get_classes.return_value = [
-        GymClass(id="42", name="WOD", time="10:00", spots_available=5, max_spots=20)
+        GymClass(id="42", name="WOD", start_time=time(10, 0), spots_available=5, max_spots=20)
     ]
     mock_factory = MagicMock(spec=IGymClientFactory)
     mock_factory.create.return_value = mock_client
@@ -197,7 +197,7 @@ def test_apscheduler_fires_execute_handler():
         apscheduler.schedule_job(
             run_at, user_id=66666666, booking_date=booking_date, class_name="WOD"
         )
-        time.sleep(0.2)
+        time_module.sleep(0.2)
     finally:
         apscheduler._scheduler.shutdown(wait=False)
 

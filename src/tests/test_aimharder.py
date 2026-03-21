@@ -1,6 +1,6 @@
 import pytest
 import responses as rsps_lib
-from datetime import datetime
+from datetime import datetime, time
 
 from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
 from domain.models import GymClass
@@ -58,7 +58,7 @@ def test_get_classes_returns_gym_class_objects(http_mock):
     assert isinstance(gym_class, GymClass)
     assert gym_class.id == "42"
     assert gym_class.name == "WOD"
-    assert gym_class.time == "11:00"
+    assert gym_class.start_time == time(11, 0)
     assert gym_class.spots_available == 5
     assert gym_class.max_spots == 20
 
@@ -94,7 +94,7 @@ def test_get_classes_normalizes_timeid_to_hhmm(http_mock):
     })
 
     result = client.get_classes(datetime(2027, 3, 15))
-    assert result[0].time == "08:30"
+    assert result[0].start_time == time(8, 30)
 
 
 # ── book_class tests ──────────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ def test_get_classes_normalizes_3digit_timeid(http_mock):
     })
 
     result = client.get_classes(datetime(2027, 3, 15))
-    assert result[0].time == "09:00"
+    assert result[0].start_time == time(9, 0)
 
 
 def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
@@ -217,6 +217,6 @@ def test_raw_booking_to_gym_class():
     assert isinstance(gym_class, GymClass)
     assert gym_class.id == "42"
     assert gym_class.name == "WOD"
-    assert gym_class.time == "11:00"
+    assert gym_class.start_time == time(11, 0)
     assert gym_class.max_spots == 20
     assert gym_class.spots_available == 5

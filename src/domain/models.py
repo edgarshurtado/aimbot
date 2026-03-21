@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, time
 
 
 @dataclass
 class GymClass:
     id: str
     name: str
-    time: str           # "HH:MM", normalized by the adapter
+    start_time: time
     spots_available: int
     max_spots: int
 
