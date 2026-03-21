@@ -265,7 +265,7 @@ class TelegramBot:
 
         user = self._user_repo.get_user(update.effective_user.id)
         selected_goal = user.booking_goals[idx]
-        self._remove_uc.execute(update.effective_user.id, selected_goal.job_id)
+        self._remove_uc.execute(update.effective_user.id, selected_goal.booking_date, selected_goal.name)
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,

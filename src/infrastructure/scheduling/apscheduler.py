@@ -21,14 +21,18 @@ class APSchedulerAdapter(IJobScheduler):
         user_id: int,
         booking_date: datetime,
         class_name: str,
-    ) -> str:
-        job = self._scheduler.add_job(
+    ) -> None:
+        self._scheduler.add_job(
             self._handler,
             trigger=DateTrigger(run_date=run_at),
             args=[user_id, booking_date, class_name],
+            id=self._job_id(user_id, booking_date, class_name),
             misfire_grace_time=None,  # always fire even if missed
         )
-        return job.id
 
-    def remove_job(self, job_id: str) -> None:
-        self._scheduler.remove_job(job_id)
+    def remove_job(self, user_id: int, booking_date: datetime, class_name: str) -> None:
+        self._scheduler.remove_job(self._job_id(user_id, booking_date, class_name))
+
+    @staticmethod
+    def _job_id(user_id: int, booking_date: datetime, class_name: str) -> str:
+        return f"{user_id}_{booking_date.isoformat()}_{class_name}"

@@ -18,18 +18,6 @@ def test_implements_ischeduler(adapter):
     assert isinstance(a, IJobScheduler)
 
 
-def test_schedule_job_returns_job_id(adapter):
-    a, _ = adapter
-    job_id = a.schedule_job(
-        run_at=datetime(2027, 3, 12, 18, 30),
-        user_id=123,
-        booking_date=datetime(2027, 3, 15, 18, 30),
-        class_name="WOD",
-    )
-    assert isinstance(job_id, str)
-    assert job_id != ""
-
-
 def test_schedule_job_creates_date_trigger(adapter):
     a, _ = adapter
     a.schedule_job(
@@ -65,16 +53,16 @@ def test_scheduled_job_calls_handler_with_correct_args(mocker):
 def test_remove_job_removes_scheduled_job(adapter):
     from apscheduler.jobstores.base import JobLookupError
     a, _ = adapter
-    job_id = a.schedule_job(
+    a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=123,
         booking_date=datetime(2027, 3, 15, 18, 30),
         class_name="WOD",
     )
-    a.remove_job(job_id)
+    a.remove_job(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
     with pytest.raises(JobLookupError):
-        a.remove_job(job_id)
+        a.remove_job(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
 
 def test_start_starts_scheduler(mocker):
@@ -85,18 +73,18 @@ def test_start_starts_scheduler(mocker):
     mock_start.assert_called_once()
 
 
-def test_schedule_job_unique_ids(adapter):
+def test_schedule_job_different_bookings_create_separate_jobs(adapter):
     a, _ = adapter
-    id1 = a.schedule_job(
+    a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=1,
         booking_date=datetime(2027, 3, 15, 18, 30),
         class_name="WOD",
     )
-    id2 = a.schedule_job(
+    a.schedule_job(
         run_at=datetime(2027, 3, 13, 10, 0),
         user_id=2,
         booking_date=datetime(2027, 3, 16, 10, 0),
         class_name="OPEN",
     )
-    assert id1 != id2
+    assert len(a._scheduler.get_jobs()) == 2

@@ -26,7 +26,7 @@ class ScheduleBookingUseCase:
             raise ValueError(f"User {user_id} not found")
 
         trigger = self._platform_config.booking_trigger_time(booking_date)
-        job_id = self._scheduler.schedule_job(
+        self._scheduler.schedule_job(
             run_at=trigger,
             user_id=user_id,
             booking_date=booking_date,
@@ -34,5 +34,5 @@ class ScheduleBookingUseCase:
         )
         self._booking_repo.add_booking_goal(
             user_id,
-            BookingGoal(booking_date=booking_date, name=class_name, job_id=job_id),
+            BookingGoal(booking_date=booking_date, name=class_name),
         )

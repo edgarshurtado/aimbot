@@ -98,7 +98,6 @@ def test_startup_recovery_reschedules_all_user_goals(mocker):
                 BookingGoal(
                     booking_date=datetime(2027, 3, 15, 18, 30),
                     name="WOD",
-                    job_id="old-job",
                 )
             ],
         )
@@ -132,8 +131,8 @@ def test_startup_recovery_multiple_users(mocker):
             email="a@b.com",
             password="pw",
             booking_goals=[
-                BookingGoal(booking_date=datetime(2027, 3, 15, 18, 30), name="WOD", job_id="j1"),
-                BookingGoal(booking_date=datetime(2027, 3, 16, 10, 0), name="OPEN", job_id="j2"),
+                BookingGoal(booking_date=datetime(2027, 3, 15, 18, 30), name="WOD"),
+                BookingGoal(booking_date=datetime(2027, 3, 16, 10, 0), name="OPEN"),
             ],
         ),
         User(
@@ -141,7 +140,7 @@ def test_startup_recovery_multiple_users(mocker):
             email="b@c.com",
             password="pw2",
             booking_goals=[
-                BookingGoal(booking_date=datetime(2027, 3, 17, 9, 0), name="GYMNASTIC", job_id="j3"),
+                BookingGoal(booking_date=datetime(2027, 3, 17, 9, 0), name="GYMNASTIC"),
             ],
         ),
     ]

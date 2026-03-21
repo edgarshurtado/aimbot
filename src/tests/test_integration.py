@@ -39,7 +39,6 @@ def schedule_file_with_goal(tmp_path):
                 {
                     "datetime": "15-06-2027 10:00",
                     "name": "WOD",
-                    "job_id": "seed-job-001",
                 }
             ],
             "recurrentBookingGoals": {},
@@ -93,10 +92,10 @@ def test_schedule_then_remove_roundtrip(schedule_file):
     goal = user.booking_goals[0]
     assert goal.name == "WOD"
     assert goal.booking_date == booking_date
-    assert goal.job_id  # job_id was assigned by the scheduler
+
 
     # After remove: user has 0 booking goals
-    remove_uc.execute(66666666, goal.job_id)
+    remove_uc.execute(66666666, goal.booking_date, goal.name)
     user_after = json_repo.get_user(66666666)
     assert len(user_after.booking_goals) == 0
 
@@ -129,7 +128,7 @@ def test_startup_recovery_with_real_components(schedule_file_with_goal):
     jobs = apscheduler._scheduler.get_jobs()
     assert len(jobs) == 1
 
-    # Repo still has exactly 1 goal (dedup fired — job_id updated, not duplicated)
+    # Repo still has exactly 1 goal (dedup fired — not duplicated)
     user = json_repo.get_user(66666666)
     assert len(user.booking_goals) == 1
     assert user.booking_goals[0].name == "WOD"

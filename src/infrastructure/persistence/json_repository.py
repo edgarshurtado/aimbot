@@ -41,14 +41,12 @@ class JsonRepository(IUserRepository, IBookingRepository):
         return BookingGoal(
             booking_date=datetime.strptime(raw["datetime"], self._DATETIME_FMT),
             name=raw["name"],
-            job_id=raw["job_id"],
         )
 
     def _booking_goal_to_raw(self, goal: BookingGoal) -> dict:
         return {
             "datetime": goal.booking_date.strftime(self._DATETIME_FMT),
             "name": goal.name,
-            "job_id": goal.job_id,
         }
 
     def _raw_to_user(self, raw_entry: dict) -> User:
@@ -89,12 +87,11 @@ class JsonRepository(IUserRepository, IBookingRepository):
 
         goals_list = raw.setdefault("bookingGoals", [])
 
-        # Dedup: match on (booking_date, name) — update job_id in-place
+        # Dedup: if a goal with the same (booking_date, name) exists, keep it as-is
         raw_goal = self._booking_goal_to_raw(goal)
         for existing in goals_list:
             if (existing["datetime"] == raw_goal["datetime"]
                     and existing["name"] == raw_goal["name"]):
-                existing["job_id"] = raw_goal["job_id"]
                 self._save()
                 return Result(success=True)
 
@@ -102,12 +99,14 @@ class JsonRepository(IUserRepository, IBookingRepository):
         self._save()
         return Result(success=True)
 
-    def remove_booking_goal(self, user_id: int, job_id: str) -> None:
+    def remove_booking_goal(self, user_id: int, booking_date: datetime, class_name: str) -> None:
         raw = self._find_raw_user(user_id)
         if raw is None:
             return
+        date_str = booking_date.strftime(self._DATETIME_FMT)
         raw["bookingGoals"] = [
-            bg for bg in raw.get("bookingGoals", []) if bg["job_id"] != job_id
+            bg for bg in raw.get("bookingGoals", [])
+            if not (bg["datetime"] == date_str and bg["name"] == class_name)
         ]
         self._save()
 

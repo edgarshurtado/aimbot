@@ -15,7 +15,6 @@ class GymClass:
 class BookingGoal:
     booking_date: datetime   # renamed from 'datetime' to avoid shadowing
     name: str
-    job_id: str
 
 
 @dataclass

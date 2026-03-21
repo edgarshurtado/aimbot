@@ -27,8 +27,8 @@ def _make_user(user_id=123, email="a@b.com", password="pw"):
     return User(id=user_id, email=email, password=password)
 
 
-def _make_goal(job_id="job-1"):
-    return BookingGoal(booking_date=datetime(2027, 3, 15, 18, 30), name="WOD", job_id=job_id)
+def _make_goal():
+    return BookingGoal(booking_date=datetime(2027, 3, 15, 18, 30), name="WOD")
 
 
 def test_execute_booking_happy_path(execute_booking):
@@ -36,12 +36,12 @@ def test_execute_booking_happy_path(execute_booking):
 
     user_repo.get_user.return_value = _make_user()
     client.get_classes.return_value = [GymClass(id="42", name="WOD", start_time=time(18, 30), spots_available=5, max_spots=20)]
-    booking_repo.find_booking_goal.return_value = _make_goal("job-1")
+    booking_repo.find_booking_goal.return_value = _make_goal()
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
     client.book_class.assert_called_once_with(datetime(2027, 3, 15, 18, 30), "42")
-    booking_repo.remove_booking_goal.assert_called_once_with(123, "job-1")
+    booking_repo.remove_booking_goal.assert_called_once_with(123, datetime(2027, 3, 15, 18, 30), "WOD")
     user_notifier.notify_user.assert_called_once()
     args = user_notifier.notify_user.call_args.args
     assert args[0] == 123
@@ -101,11 +101,11 @@ def test_execute_booking_cleans_up_goal(execute_booking):
 
     user_repo.get_user.return_value = _make_user()
     client.get_classes.return_value = [GymClass(id="42", name="WOD", start_time=time(18, 30), spots_available=5, max_spots=20)]
-    booking_repo.find_booking_goal.return_value = _make_goal("cleanup-me")
+    booking_repo.find_booking_goal.return_value = _make_goal()
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
-    booking_repo.remove_booking_goal.assert_called_once_with(123, "cleanup-me")
+    booking_repo.remove_booking_goal.assert_called_once_with(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
 
 def test_execute_booking_no_goal_to_clean_up(execute_booking):
