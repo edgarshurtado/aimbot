@@ -7,7 +7,7 @@ Telegram API) remain mocked.
 import json
 import shutil
 import time as time_module
-from datetime import datetime, time
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -149,7 +149,7 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
 
     mock_client = MagicMock()
     mock_client.get_classes.return_value = [
-        GymClass(id="42", name="WOD", start_time=time(10, 0), spots_available=5, max_spots=20)
+        GymClass(name="WOD", scheduled_at=datetime(2027, 6, 15, 10, 0), spots_available=5, max_spots=20)
     ]
     mock_factory = MagicMock(spec=IGymClientFactory)
     mock_factory.create.return_value = mock_client
