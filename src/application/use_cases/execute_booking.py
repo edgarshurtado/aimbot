@@ -34,7 +34,7 @@ class ExecuteBookingUseCase:
             raise BoxClosed(MESSAGE_BOX_IS_CLOSED)
 
         matched = next(
-            (c for c in classes if c.start_time == booking_date.time() and class_name in c.name),
+            (c for c in classes if c.scheduled_at == booking_date and class_name in c.name),
             None,
         )
         if matched is None:
@@ -42,7 +42,7 @@ class ExecuteBookingUseCase:
                 f"No class '{class_name}' at {booking_date.strftime('%H:%M')} on {booking_date.date()}"
             )
 
-        client.book_class(booking_date, matched.id)
+        client.book_class(matched)
 
         goal = self._booking_repo.find_booking_goal(user_id, booking_date, class_name)
         if goal is not None:
