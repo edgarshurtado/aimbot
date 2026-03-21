@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import time
+from datetime import date, datetime, time
 
 from domain.models import GymClass
 
@@ -32,11 +32,10 @@ class RawBooking:
     def spots_available(self) -> int:
         return self.limit - self.ocupation
 
-    def to_gym_class(self) -> GymClass:
+    def to_gym_class(self, day: date) -> GymClass:
         return GymClass(
-            id=self.id,
             name=self.class_name,
-            start_time=_normalize_timeid(self.timeid),
+            scheduled_at=datetime.combine(day, _normalize_timeid(self.timeid)),
             max_spots=self.limit,
             spots_available=self.spots_available,
         )
