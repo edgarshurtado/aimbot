@@ -13,7 +13,7 @@ class GymClass:
 
 @dataclass
 class BookingGoal:
-    booking_date: datetime   # renamed from 'datetime' to avoid shadowing
+    booking_date: datetime
     name: str
 
 
