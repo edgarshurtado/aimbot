@@ -25,7 +25,14 @@ class ScheduleBookingUseCase:
         if user is None:
             raise ValueError(f"User {user_id} not found")
 
-        goal = BookingGoal(user_id=user_id, booking_date=booking_date, name=class_name)
         trigger = self._platform_config.booking_trigger_time(booking_date)
-        self._scheduler.schedule_job(run_at=trigger, goal=goal)
-        self._booking_repo.add_booking_goal(goal)
+        self._scheduler.schedule_job(
+            run_at=trigger,
+            user_id=user_id,
+            booking_date=booking_date,
+            class_name=class_name,
+        )
+        self._booking_repo.add_booking_goal(
+            user_id,
+            BookingGoal(booking_date=booking_date, name=class_name),
+        )

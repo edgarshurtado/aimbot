@@ -3,7 +3,6 @@ import pytest
 from datetime import datetime
 
 from apscheduler.triggers.date import DateTrigger
-from domain.models import BookingGoal
 from domain.ports.scheduler import IJobScheduler
 from infrastructure.scheduling.apscheduler import APSchedulerAdapter
 
@@ -23,7 +22,9 @@ def test_schedule_job_creates_date_trigger(adapter):
     a, _ = adapter
     a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
-        goal=BookingGoal(user_id=123, booking_date=datetime(2027, 3, 15, 18, 30), name="WOD"),
+        user_id=123,
+        booking_date=datetime(2027, 3, 15, 18, 30),
+        class_name="WOD",
     )
     jobs = a._scheduler.get_jobs()
     assert len(jobs) == 1
@@ -38,7 +39,9 @@ def test_scheduled_job_calls_handler_with_correct_args(mocker):
     booking_date = datetime(2027, 3, 15, 18, 30)
     a.schedule_job(
         run_at=datetime(2020, 1, 1, 0, 0),  # in the past → fires immediately
-        goal=BookingGoal(user_id=123, booking_date=booking_date, name="WOD"),
+        user_id=123,
+        booking_date=booking_date,
+        class_name="WOD",
     )
     a.start()
     time.sleep(0.2)  # give scheduler time to fire
@@ -52,13 +55,14 @@ def test_remove_job_removes_scheduled_job(adapter):
     a, _ = adapter
     a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
-        goal=BookingGoal(user_id=123, booking_date=datetime(2027, 3, 15, 18, 30), name="WOD"),
+        user_id=123,
+        booking_date=datetime(2027, 3, 15, 18, 30),
+        class_name="WOD",
     )
-    goal = BookingGoal(user_id=123, booking_date=datetime(2027, 3, 15, 18, 30), name="WOD")
-    a.remove_job(goal)
+    a.remove_job(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
     with pytest.raises(JobLookupError):
-        a.remove_job(goal)
+        a.remove_job(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
 
 def test_start_starts_scheduler(mocker):
@@ -73,10 +77,14 @@ def test_schedule_job_different_bookings_create_separate_jobs(adapter):
     a, _ = adapter
     a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
-        goal=BookingGoal(user_id=1, booking_date=datetime(2027, 3, 15, 18, 30), name="WOD"),
+        user_id=1,
+        booking_date=datetime(2027, 3, 15, 18, 30),
+        class_name="WOD",
     )
     a.schedule_job(
         run_at=datetime(2027, 3, 13, 10, 0),
-        goal=BookingGoal(user_id=2, booking_date=datetime(2027, 3, 16, 10, 0), name="OPEN"),
+        user_id=2,
+        booking_date=datetime(2027, 3, 16, 10, 0),
+        class_name="OPEN",
     )
     assert len(a._scheduler.get_jobs()) == 2

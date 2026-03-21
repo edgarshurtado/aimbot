@@ -100,7 +100,7 @@ async def test_schedule_handler_lists_bookings(telegram_bot, mocker):
         email="a@b.com",
         password="pw",
         booking_goals=[
-            BookingGoal(user_id=12345, booking_date=datetime(2027, 1, 18, 18, 30), name="WOD")
+            BookingGoal(booking_date=datetime(2027, 1, 18, 18, 30), name="WOD")
         ],
     )
     update = _make_update(12345, mocker)
@@ -183,7 +183,7 @@ async def test_remove_handler_calls_remove_use_case(telegram_bot, mocker):
         email="a@b.com",
         password="pw",
         booking_goals=[
-            BookingGoal(user_id=12345, booking_date=datetime(2027, 1, 18, 18, 30), name="WOD")
+            BookingGoal(booking_date=datetime(2027, 1, 18, 18, 30), name="WOD")
         ],
     )
     update = _make_update(12345, mocker)
@@ -191,9 +191,7 @@ async def test_remove_handler_calls_remove_use_case(telegram_bot, mocker):
 
     await bot._TelegramBot__remove_booking_handler(update, context)
 
-    remove_uc.execute.assert_called_once_with(
-        BookingGoal(user_id=12345, booking_date=datetime(2027, 1, 18, 18, 30), name="WOD")
-    )
+    remove_uc.execute.assert_called_once_with(12345, datetime(2027, 1, 18, 18, 30), "WOD")
 
 
 # ── Domain objects (not raw dicts) ─────────────────────────────────────────────
@@ -203,7 +201,7 @@ async def test_bot_uses_domain_objects_not_dicts(telegram_bot, mocker):
     """Schedule handler reads user.booking_goals (BookingGoal objects), not dicts."""
     bot, user_repo, schedule_uc, remove_uc = telegram_bot
 
-    goals = [BookingGoal(user_id=12345, booking_date=datetime(2027, 1, 18, 18, 30), name="WOD")]
+    goals = [BookingGoal(booking_date=datetime(2027, 1, 18, 18, 30), name="WOD")]
     user = User(id=12345, email="a@b.com", password="pw", booking_goals=goals)
     user_repo.get_user.return_value = user
 

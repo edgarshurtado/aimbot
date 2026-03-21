@@ -28,7 +28,7 @@ def _make_user(user_id=123, email="a@b.com", password="pw"):
 
 
 def _make_goal():
-    return BookingGoal(user_id=123, booking_date=datetime(2027, 3, 15, 18, 30), name="WOD")
+    return BookingGoal(booking_date=datetime(2027, 3, 15, 18, 30), name="WOD")
 
 
 def test_execute_booking_happy_path(execute_booking):
@@ -41,7 +41,7 @@ def test_execute_booking_happy_path(execute_booking):
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
     client.book_class.assert_called_once_with(datetime(2027, 3, 15, 18, 30), "42")
-    booking_repo.remove_booking_goal.assert_called_once_with(_make_goal())
+    booking_repo.remove_booking_goal.assert_called_once_with(123, datetime(2027, 3, 15, 18, 30), "WOD")
     user_notifier.notify_user.assert_called_once()
     args = user_notifier.notify_user.call_args.args
     assert args[0] == 123
@@ -105,7 +105,7 @@ def test_execute_booking_cleans_up_goal(execute_booking):
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
-    booking_repo.remove_booking_goal.assert_called_once_with(_make_goal())
+    booking_repo.remove_booking_goal.assert_called_once_with(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
 
 def test_execute_booking_no_goal_to_clean_up(execute_booking):
