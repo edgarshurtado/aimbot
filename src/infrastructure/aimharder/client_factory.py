@@ -1,16 +1,12 @@
-from datetime import datetime, timedelta
-
-from domain.ports.gym_client import IGymClientFactory, IGymPlatformConfig
+from domain.models import User
+from domain.ports.gym_client import IGymClientFactory
 from infrastructure.aimharder.client import AimHarderClient
+from infrastructure.aimharder.gym_config import IAimHarderGym
 
 
-class AimHarderClientFactory(IGymClientFactory, IGymPlatformConfig):
-    def __init__(self, box_id: int, box_name: str) -> None:
-        self._box_id = box_id
-        self._box_name = box_name
+class AimHarderClientFactory(IGymClientFactory):
+    def __init__(self, gym: IAimHarderGym) -> None:
+        self._gym = gym
 
-    def create(self, email: str, password: str) -> AimHarderClient:
-        return AimHarderClient(email, password, self._box_id, self._box_name)
-
-    def booking_trigger_time(self, class_date: datetime) -> datetime:
-        return class_date - timedelta(days=3)
+    def create(self, user: User) -> AimHarderClient:
+        return AimHarderClient(user.email, user.password, self._gym.box_id, self._gym.box_name)
