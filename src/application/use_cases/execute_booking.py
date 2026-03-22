@@ -44,9 +44,7 @@ class ExecuteBookingUseCase:
 
         client.book_class(matched)
 
-        goal = self._booking_repo.find_booking_goal(user_id, booking_date, class_name)
-        if goal is not None:
-            self._booking_repo.remove_booking_goal(user_id, booking_date, class_name)
+        self._booking_repo.remove_booking_goal(user_id, booking_date, class_name)
 
         msg = (
             f"class booked for {user.email}: {class_name} "

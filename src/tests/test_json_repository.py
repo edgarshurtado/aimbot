@@ -115,22 +115,6 @@ def test_remove_booking_goal(repository):
     assert len(bookings) == 0
 
 
-# ── find_booking_goal ─────────────────────────────────────────────────────────
-
-def test_find_booking_goal_found(repository):
-    goal = BookingGoal(booking_date=datetime(2027, 5, 20, 9, 0), name="WOD")
-    repository.add_booking_goal(66666666, goal)
-
-    result = repository.find_booking_goal(66666666, datetime(2027, 5, 20, 9, 0), "WOD")
-    assert result is not None
-    assert isinstance(result, BookingGoal)
-
-
-def test_find_booking_goal_not_found(repository):
-    result = repository.find_booking_goal(66666666, datetime(2099, 1, 1, 0, 0), "NONEXISTENT")
-    assert result is None
-
-
 # ── adversarial edge cases ────────────────────────────────────────────────────
 
 def test_dedup_does_not_fire_when_only_name_matches(repository):

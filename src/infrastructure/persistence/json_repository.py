@@ -109,15 +109,3 @@ class JsonRepository(IUserRepository, IBookingRepository):
             if not (bg["datetime"] == date_str and bg["name"] == class_name)
         ]
         self._save()
-
-    def find_booking_goal(
-        self, user_id: int, booking_date: datetime, class_name: str
-    ) -> BookingGoal | None:
-        raw = self._find_raw_user(user_id)
-        if raw is None:
-            return None
-        date_str = booking_date.strftime(self._DATETIME_FMT)
-        for bookinGoal in raw.get("bookingGoals", []):
-            if bookinGoal["datetime"] == date_str and bookinGoal["name"] == class_name:
-                return self._raw_to_booking_goal(bookinGoal)
-        return None

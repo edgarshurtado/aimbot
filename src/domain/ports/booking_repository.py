@@ -13,6 +13,3 @@ class IBookingRepository(ABC):
 
     @abstractmethod
     def remove_booking_goal(self, user_id: int, booking_date: datetime, class_name: str) -> None: ...
-
-    @abstractmethod
-    def find_booking_goal(self, user_id: int, booking_date: datetime, class_name: str) -> BookingGoal | None: ...
