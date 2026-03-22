@@ -2,11 +2,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from box_data import box_id, box_name  # noqa: E402
 from application.use_cases.execute_booking import ExecuteBookingUseCase  # noqa: E402
 from application.use_cases.remove_booking import RemoveBookingUseCase  # noqa: E402
 from application.use_cases.schedule_booking import ScheduleBookingUseCase  # noqa: E402
 from infrastructure.aimharder.client_factory import AimHarderClientFactory  # noqa: E402
+from infrastructure.aimharder.monkey_box_config import MonkeyBoxConfig  # noqa: E402
 from infrastructure.persistence.json_repository import JsonRepository  # noqa: E402
 from infrastructure.scheduling.apscheduler import APSchedulerAdapter  # noqa: E402
 from infrastructure.telegram.bot import TelegramBot  # noqa: E402
@@ -16,7 +16,8 @@ from infrastructure.telegram.user_notifier import TelegramUserNotifier  # noqa: 
 
 def bootstrap():
     json_repo = JsonRepository()
-    factory = AimHarderClientFactory(box_id=box_id, box_name=box_name)
+    gym_config = MonkeyBoxConfig()
+    factory = AimHarderClientFactory(gym=gym_config)
 
     telegram_bot = TelegramBot(user_repo=json_repo)
     user_notifier = TelegramUserNotifier(send_fn=telegram_bot.send_message)
@@ -26,7 +27,7 @@ def bootstrap():
         json_repo, json_repo, factory, user_notifier, group_notifier
     )
     apscheduler = APSchedulerAdapter(on_job_execute=execute_uc.execute)
-    schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, factory)
+    schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, gym_config)
     remove_uc = RemoveBookingUseCase(json_repo, apscheduler)
 
     telegram_bot.set_use_cases(schedule_uc, remove_uc)
@@ -44,6 +45,7 @@ def bootstrap():
 
     return {
         "json_repo": json_repo,
+        "gym_config": gym_config,
         "factory": factory,
         "telegram_bot": telegram_bot,
         "execute_uc": execute_uc,
