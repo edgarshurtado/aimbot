@@ -46,48 +46,98 @@ class IGymConfig(ABC):
 
 ### Infrastructure layer
 
-`AimHarderClientFactory` drops the `IGymPlatformConfig` implementation and only handles platform client creation:
+#### AimHarder gym interface
+
+`IAimHarderGym` extends `IGymConfig` with the platform-specific properties that AimHarder needs (`box_id`, `box_name`, `days_in_advance`). It provides a default `booking_trigger_time` based on `days_in_advance`:
+
+```python
+# infrastructure/aimharder/gym_config.py
+class IAimHarderGym(IGymConfig):
+    @property
+    @abstractmethod
+    def box_id(self) -> int: ...
+
+    @property
+    @abstractmethod
+    def box_name(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def days_in_advance(self) -> int: ...
+
+    def booking_trigger_time(self, class_start: datetime) -> datetime:
+        return class_start - timedelta(days=self.days_in_advance)
+```
+
+#### Concrete gym config
+
+`MonkeyBoxConfig` implements `IAimHarderGym`, loading all values from environment variables:
+
+```python
+# infrastructure/aimharder/monkey_box_config.py
+class MonkeyBoxConfig(IAimHarderGym):
+    def __init__(self) -> None:
+        self._box_id = int(os.environ["BOX_ID"])
+        self._box_name = os.environ["BOX_NAME"]
+        self._days_in_advance = int(os.environ["DAYS_IN_ADVANCE"])
+
+    @property
+    def box_id(self) -> int: return self._box_id
+    @property
+    def box_name(self) -> str: return self._box_name
+    @property
+    def days_in_advance(self) -> int: return self._days_in_advance
+```
+
+#### Client factory
+
+`AimHarderClientFactory` takes an `IAimHarderGym` instead of raw `box_id`/`box_name` params:
 
 ```python
 # infrastructure/aimharder/client_factory.py
 class AimHarderClientFactory(IGymClientFactory):
-    def __init__(self, box_id: int, box_name: str) -> None: ...
-    def create(self, user: User) -> AimHarderClient: ...
+    def __init__(self, gym: IAimHarderGym) -> None:
+        self._gym = gym
+
+    def create(self, user: User) -> AimHarderClient:
+        return AimHarderClient(user.email, user.password, self._gym.box_id, self._gym.box_name)
 ```
 
-A new concrete class implements the gym booking rule, co-located with `box_data.py`:
+#### Environment variables
 
-```python
-# infrastructure/monkey_box_config.py
-class MonkeyBoxConfig(IGymConfig):
-    def booking_trigger_time(self, class_start: datetime) -> datetime:
-        return class_start - timedelta(days=days_in_advance)
+`box_data.py` is deleted. `BOX_ID`, `BOX_NAME`, and `DAYS_IN_ADVANCE` move to `.env`:
+
+```env
+BOX_ID=9824
+BOX_NAME=themonkeybox
+DAYS_IN_ADVANCE=3
 ```
-
-Future gym configs with arbitrary trigger logic (e.g. Sunday-opens-week) implement `IGymConfig` the same way.
 
 ### Composition root (`main.py`)
 
 ```python
-factory = AimHarderClientFactory(box_id=box_id, box_name=box_name)
-gym_config = MonkeyBoxConfig()
+gym_config = MonkeyBoxConfig()           # reads from .env
+factory = AimHarderClientFactory(gym=gym_config)
 
 execute_uc = ExecuteBookingUseCase(json_repo, json_repo, factory, user_notifier, group_notifier)
 schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, gym_config)
 ```
 
-`ScheduleBookingUseCase` now receives an `IGymConfig` — not a factory, not a platform concept.
+`MonkeyBoxConfig` is the single source of gym configuration. It is injected into `ScheduleBookingUseCase` as an `IGymConfig` (for booking trigger logic) and into `AimHarderClientFactory` as an `IAimHarderGym` (for platform-specific properties).
 
 ## Change surface
 
 | File | Change |
 |---|---|
 | `domain/ports/gym_client.py` | Remove `IGymPlatformConfig` |
-| `domain/ports/gym_config.py` | **New** — `IGymConfig` |
-| `infrastructure/aimharder/client_factory.py` | Remove `IGymPlatformConfig` impl |
-| `infrastructure/monkey_box_config.py` | **New** — `MonkeyBoxConfig(IGymConfig)` |
+| `domain/ports/gym_config.py` | **New** — `IGymConfig` port |
+| `infrastructure/aimharder/gym_config.py` | **New** — `IAimHarderGym(IGymConfig)` with default `booking_trigger_time` |
+| `infrastructure/aimharder/monkey_box_config.py` | **New** — `MonkeyBoxConfig(IAimHarderGym)`, reads `.env` |
+| `infrastructure/aimharder/client_factory.py` | Remove `IGymPlatformConfig` impl, take `IAimHarderGym` in constructor |
 | `application/use_cases/schedule_booking.py` | Import `IGymConfig` instead of `IGymPlatformConfig` |
-| `main.py` | Inject `MonkeyBoxConfig()` separately from `factory` |
+| `main.py` | Create `MonkeyBoxConfig()`, pass to factory and schedule use case |
+| `box_data.py` | **Deleted** — values move to `.env` |
+| `.env` | Add `BOX_ID`, `BOX_NAME`, `DAYS_IN_ADVANCE` |
 | `src/tests/*` | Update references to `IGymPlatformConfig` |
 
-Everything else — `IGymClient`, `IGymClientFactory`, `AimHarderClient`, `ExecuteBookingUseCase`, `RemoveBookingUseCase` — is unchanged.
+Everything else — `IGymClient`, `AimHarderClient`, `ExecuteBookingUseCase`, `RemoveBookingUseCase` — is unchanged.
