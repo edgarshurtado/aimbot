@@ -77,10 +77,12 @@ def test_schedule_then_remove_roundtrip(schedule_file):
     from application.use_cases.schedule_booking import ScheduleBookingUseCase
     from application.use_cases.remove_booking import RemoveBookingUseCase
 
+    from domain.ports.gym_config import IGymConfig
     json_repo = JsonRepository(schedule_file)
     apscheduler = APSchedulerAdapter(on_job_execute=lambda *a: None)
-    factory = AimHarderClientFactory(box_id=1, box_name="test-box")
-    schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, factory)
+    gym_config = MagicMock(spec=IGymConfig)
+    gym_config.booking_trigger_time.side_effect = lambda class_start: class_start
+    schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, gym_config)
     remove_uc = RemoveBookingUseCase(json_repo, apscheduler)
 
     class_start = datetime(2027, 6, 15, 10, 0)
@@ -110,10 +112,12 @@ def test_startup_recovery_with_real_components(schedule_file_with_goal):
     from infrastructure.scheduling.apscheduler import APSchedulerAdapter
     from application.use_cases.schedule_booking import ScheduleBookingUseCase
 
+    from domain.ports.gym_config import IGymConfig
     json_repo = JsonRepository(schedule_file_with_goal)
     apscheduler = APSchedulerAdapter(on_job_execute=lambda *a: None)
-    factory = AimHarderClientFactory(box_id=1, box_name="test-box")
-    schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, factory)
+    gym_config = MagicMock(spec=IGymConfig)
+    gym_config.booking_trigger_time.side_effect = lambda class_start: class_start
+    schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, gym_config)
 
     # Run startup recovery (mirrors main.py bootstrap loop)
     for user in json_repo.get_all_users():

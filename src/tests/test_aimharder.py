@@ -4,15 +4,17 @@ from datetime import date, datetime
 
 from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
 from domain.models import GymClass
-from domain.ports.gym_client import IGymClientFactory, IGymPlatformConfig
 from domain.exceptions import ErrorResponse, IncorrectCredentials, BookingFailed
+from domain.ports.gym_client import IGymClientFactory
 from infrastructure.aimharder.client import AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory
+from infrastructure.aimharder.gym_config import IAimHarderGym
 from infrastructure.aimharder.raw_booking import RawBooking
 
 
 BOX_NAME = "themonkeybox"
 BOX_ID = 9824
+DAYS_IN_ADVANCE = 3
 LOGIN_SUCCESS_BODY = b'<html><span id="loginErrors"></span></html>'
 
 
@@ -21,8 +23,17 @@ def _mock_login_success(http_mock):
 
 
 @pytest.fixture
-def factory():
-    return AimHarderClientFactory(box_id=BOX_ID, box_name=BOX_NAME)
+def gym(mocker):
+    mock = mocker.Mock(spec=IAimHarderGym)
+    mock.box_id = BOX_ID
+    mock.box_name = BOX_NAME
+    mock.days_in_advance = DAYS_IN_ADVANCE
+    return mock
+
+
+@pytest.fixture
+def factory(gym):
+    return AimHarderClientFactory(gym=gym)
 
 
 # ── Login tests ───────────────────────────────────────────────────────────────
@@ -180,19 +191,21 @@ def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
 # ── Factory tests ─────────────────────────────────────────────────────────────
 
 def test_factory_create_returns_client(factory, http_mock):
+    from domain.models import User
     _mock_login_success(http_mock)
-    client = factory.create("foo@bar.com", "pass")
+    client = factory.create(User(id=1, email="foo@bar.com", password="pass"))
     assert isinstance(client, AimHarderClient)
 
 
-def test_factory_booking_trigger_time_is_set_to_3_days_before(factory):
-    result = factory.booking_trigger_time(class_date=datetime(2027, 3, 15, 18, 30))
-    assert result == datetime(2027, 3, 12, 18, 30)
-
-
-def test_factory_implements_both_interfaces(factory):
+def test_factory_implements_gym_client_factory_interface(factory):
     assert isinstance(factory, IGymClientFactory)
-    assert isinstance(factory, IGymPlatformConfig)
+
+
+def test_aim_harder_gym_booking_trigger_time(gym):
+    from datetime import timedelta
+    gym.days_in_advance = 3
+    result = IAimHarderGym.booking_trigger_time(gym, class_start=datetime(2027, 3, 15, 18, 30))
+    assert result == datetime(2027, 3, 12, 18, 30)
 
 
 # ── RawBooking tests ──────────────────────────────────────────────────────────
