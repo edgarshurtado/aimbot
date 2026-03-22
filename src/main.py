@@ -36,7 +36,7 @@ def bootstrap():
         for goal in user.booking_goals:
             schedule_uc.execute(
                 user_id=user.id,
-                booking_date=goal.booking_date,
+                class_start=goal.class_start,
                 class_name=goal.name,
             )
 

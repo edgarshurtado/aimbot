@@ -5,14 +5,14 @@ from datetime import datetime
 @dataclass
 class GymClass:
     name: str
-    scheduled_at: datetime
+    class_start: datetime
     spots_available: int
     max_spots: int
 
 
 @dataclass
 class BookingGoal:
-    booking_date: datetime
+    class_start: datetime
     name: str
 
 

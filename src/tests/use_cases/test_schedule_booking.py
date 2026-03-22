@@ -26,18 +26,18 @@ def test_schedule_booking_creates_job_and_persists_goal(schedule_booking):
     user_repo.get_user.return_value = User(id=123, email="a@b.com", password="pw")
     platform_config.booking_trigger_time.return_value = datetime(2027, 3, 12, 18, 30)
 
-    uc.execute(user_id=123, booking_date=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+    uc.execute(user_id=123, class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
 
     scheduler.schedule_job.assert_called_once_with(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=123,
-        booking_date=datetime(2027, 3, 15, 18, 30),
+        class_start=datetime(2027, 3, 15, 18, 30),
         class_name="WOD",
     )
     booking_repo.add_booking_goal.assert_called_once_with(
         123,
         BookingGoal(
-            booking_date=datetime(2027, 3, 15, 18, 30),
+            class_start=datetime(2027, 3, 15, 18, 30),
             name="WOD",
         ),
     )
@@ -49,7 +49,7 @@ def test_schedule_booking_user_not_found(schedule_booking):
     user_repo.get_user.return_value = None
 
     with pytest.raises(Exception):
-        uc.execute(user_id=999, booking_date=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+        uc.execute(user_id=999, class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
 
     scheduler.schedule_job.assert_not_called()
     booking_repo.add_booking_goal.assert_not_called()
@@ -61,7 +61,7 @@ def test_schedule_booking_uses_platform_trigger_time(schedule_booking):
     user_repo.get_user.return_value = User(id=1, email="a@b.com", password="pw")
     platform_config.booking_trigger_time.return_value = datetime(2027, 6, 7, 10, 0)
 
-    uc.execute(user_id=1, booking_date=datetime(2027, 6, 10, 10, 0), class_name="WOD")
+    uc.execute(user_id=1, class_start=datetime(2027, 6, 10, 10, 0), class_name="WOD")
 
     scheduler.schedule_job.assert_called_once()
     call_kwargs = scheduler.schedule_job.call_args

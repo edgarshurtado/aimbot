@@ -13,6 +13,6 @@ class RemoveBookingUseCase:
         self._booking_repo = booking_repo
         self._scheduler = scheduler
 
-    def execute(self, user_id: int, booking_date: datetime, class_name: str) -> None:
-        self._scheduler.remove_job(user_id, booking_date, class_name)
-        self._booking_repo.remove_booking_goal(user_id, booking_date, class_name)
+    def execute(self, user_id: int, class_start: datetime, class_name: str) -> None:
+        self._scheduler.remove_job(user_id, class_start, class_name)
+        self._booking_repo.remove_booking_goal(user_id, class_start, class_name)

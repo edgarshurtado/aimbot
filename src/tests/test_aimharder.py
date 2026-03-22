@@ -57,7 +57,7 @@ def test_get_classes_returns_gym_class_objects(http_mock):
     gym_class = result[0]
     assert isinstance(gym_class, GymClass)
     assert gym_class.name == "WOD"
-    assert gym_class.scheduled_at == datetime(2027, 3, 15, 11, 0)
+    assert gym_class.class_start == datetime(2027, 3, 15, 11, 0)
     assert gym_class.spots_available == 5
     assert gym_class.max_spots == 20
 
@@ -93,7 +93,7 @@ def test_get_classes_normalizes_timeid_to_hhmm(http_mock):
     })
 
     result = client.get_classes(datetime(2027, 3, 15))
-    assert result[0].scheduled_at == datetime(2027, 3, 15, 8, 30)
+    assert result[0].class_start == datetime(2027, 3, 15, 8, 30)
 
 
 # ── book_class tests ──────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ def test_get_classes_normalizes_timeid_to_hhmm(http_mock):
 def test_book_class_success(http_mock):
     _mock_login_success(http_mock)
     client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
-    gym_class = GymClass(name="WOD", scheduled_at=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
+    gym_class = GymClass(name="WOD", class_start=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
     http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), json={}, status=200)
@@ -113,7 +113,7 @@ def test_book_class_success(http_mock):
 def test_book_class_no_credit(http_mock):
     _mock_login_success(http_mock)
     client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
-    gym_class = GymClass(name="WOD", scheduled_at=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
+    gym_class = GymClass(name="WOD", class_start=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
     http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), json={"bookState": -2}, status=200)
@@ -125,7 +125,7 @@ def test_book_class_no_credit(http_mock):
 def test_book_class_error_response(http_mock):
     _mock_login_success(http_mock)
     client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
-    gym_class = GymClass(name="WOD", scheduled_at=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
+    gym_class = GymClass(name="WOD", class_start=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
     http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), json={"errorMssg": "some error"}, status=200)
@@ -137,7 +137,7 @@ def test_book_class_error_response(http_mock):
 def test_book_class_server_error(http_mock):
     _mock_login_success(http_mock)
     client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
-    gym_class = GymClass(name="WOD", scheduled_at=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
+    gym_class = GymClass(name="WOD", class_start=datetime(2027, 3, 2, 11, 0), spots_available=5, max_spots=20)
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
     http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), status=500)
@@ -160,7 +160,7 @@ def test_get_classes_normalizes_3digit_timeid(http_mock):
     })
 
     result = client.get_classes(datetime(2027, 3, 15))
-    assert result[0].scheduled_at == datetime(2027, 3, 15, 9, 0)
+    assert result[0].class_start == datetime(2027, 3, 15, 9, 0)
 
 
 def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
@@ -223,6 +223,6 @@ def test_raw_booking_to_gym_class():
     gym_class = raw.to_gym_class(date(2027, 3, 15))
     assert isinstance(gym_class, GymClass)
     assert gym_class.name == "WOD"
-    assert gym_class.scheduled_at == datetime(2027, 3, 15, 11, 0)
+    assert gym_class.class_start == datetime(2027, 3, 15, 11, 0)
     assert gym_class.max_spots == 20
     assert gym_class.spots_available == 5

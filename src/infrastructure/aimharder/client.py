@@ -49,15 +49,15 @@ class AimHarderClient(IGymClient):
         for b in bookings:
             raw = RawBooking.from_dict(b)
             gym_class = raw.to_gym_class(target_day.date())
-            self._id_map[(gym_class.name, gym_class.scheduled_at)] = raw.id
+            self._id_map[(gym_class.name, gym_class.class_start)] = raw.id
             gym_classes.append(gym_class)
         return gym_classes
 
     def book_class(self, gym_class: GymClass) -> None:
-        class_id = self._id_map[(gym_class.name, gym_class.scheduled_at)]
+        class_id = self._id_map[(gym_class.name, gym_class.class_start)]
         response = self._session.post(
             book_endpoint(self._box_name),
-            data={"id": class_id, "day": gym_class.scheduled_at.strftime("%Y%m%d"), "insist": 0},
+            data={"id": class_id, "day": gym_class.class_start.strftime("%Y%m%d"), "insist": 0},
         )
         if response.status_code == HTTPStatus.OK:
             data = response.json()

@@ -35,7 +35,7 @@ class RawBooking:
     def to_gym_class(self, day: date) -> GymClass:
         return GymClass(
             name=self.class_name,
-            scheduled_at=datetime.combine(day, _normalize_timeid(self.timeid)),
+            class_start=datetime.combine(day, _normalize_timeid(self.timeid)),
             max_spots=self.limit,
             spots_available=self.spots_available,
         )

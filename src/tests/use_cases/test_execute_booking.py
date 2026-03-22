@@ -28,18 +28,18 @@ def _make_user(user_id=123, email="a@b.com", password="pw"):
 
 
 def _make_goal():
-    return BookingGoal(booking_date=datetime(2027, 3, 15, 18, 30), name="WOD")
+    return BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), name="WOD")
 
 
 def test_execute_booking_happy_path(execute_booking):
     uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = [GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
+    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
-    client.book_class.assert_called_once_with(GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20))
+    client.book_class.assert_called_once_with(GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20))
     booking_repo.remove_booking_goal.assert_called_once_with(123, datetime(2027, 3, 15, 18, 30), "WOD")
     user_notifier.notify_user.assert_called_once()
     args = user_notifier.notify_user.call_args.args
@@ -53,14 +53,14 @@ def test_execute_booking_matches_by_time_and_name(execute_booking):
 
     user_repo.get_user.return_value = _make_user()
     client.get_classes.return_value = [
-        GymClass(name="OPEN", scheduled_at=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10),
-        GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10),
-        GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10),
+        GymClass(name="OPEN", class_start=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10),
+        GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10),
+        GymClass(name="WOD", class_start=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10),
     ]
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
-    client.book_class.assert_called_once_with(GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10))
+    client.book_class.assert_called_once_with(GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10))
 
 
 def test_execute_booking_user_not_found(execute_booking):
@@ -78,7 +78,7 @@ def test_execute_booking_no_matching_class_raises(execute_booking):
     uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = [GymClass(name="OPEN", scheduled_at=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10)]
+    client.get_classes.return_value = [GymClass(name="OPEN", class_start=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10)]
 
     with pytest.raises(NoBookingGoal):
         uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
@@ -98,7 +98,7 @@ def test_execute_booking_cleans_up_goal(execute_booking):
     uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = [GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
+    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
@@ -109,7 +109,7 @@ def test_execute_booking_notifies_user_and_group(execute_booking):
     uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
 
     user_repo.get_user.return_value = _make_user(user_id=123)
-    client.get_classes.return_value = [GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
+    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 
@@ -119,23 +119,23 @@ def test_execute_booking_notifies_user_and_group(execute_booking):
     assert "WOD" in msg
 
 
-def test_execute_booking_uses_booking_date_for_get_classes(execute_booking):
+def test_execute_booking_uses_class_start_for_get_classes(execute_booking):
     uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
 
     user_repo.get_user.return_value = _make_user()
-    booking_date = datetime(2027, 6, 10, 10, 0)
-    client.get_classes.return_value = [GymClass(name="WOD", scheduled_at=datetime(2027, 6, 10, 10, 0), spots_available=1, max_spots=10)]
+    class_start = datetime(2027, 6, 10, 10, 0)
+    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 6, 10, 10, 0), spots_available=1, max_spots=10)]
 
-    uc.execute(123, booking_date, "WOD")
+    uc.execute(123, class_start, "WOD")
 
-    client.get_classes.assert_called_once_with(booking_date)
+    client.get_classes.assert_called_once_with(class_start)
 
 
 def test_execute_booking_creates_client_with_user_credentials(execute_booking):
     uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
 
     user_repo.get_user.return_value = _make_user(email="test@gym.com", password="secret123")
-    client.get_classes.return_value = [GymClass(name="WOD", scheduled_at=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10)]
+    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10)]
 
     uc.execute(123, datetime(2027, 3, 15, 18, 30), "WOD")
 

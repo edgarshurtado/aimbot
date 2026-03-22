@@ -83,19 +83,19 @@ def test_schedule_then_remove_roundtrip(schedule_file):
     schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, factory)
     remove_uc = RemoveBookingUseCase(json_repo, apscheduler)
 
-    booking_date = datetime(2027, 6, 15, 10, 0)
-    schedule_uc.execute(user_id=66666666, booking_date=booking_date, class_name="WOD")
+    class_start = datetime(2027, 6, 15, 10, 0)
+    schedule_uc.execute(user_id=66666666, class_start=class_start, class_name="WOD")
 
     # After scheduling: user has 1 booking goal
     user = json_repo.get_user(66666666)
     assert len(user.booking_goals) == 1
     goal = user.booking_goals[0]
     assert goal.name == "WOD"
-    assert goal.booking_date == booking_date
+    assert goal.class_start == class_start
 
 
     # After remove: user has 0 booking goals
-    remove_uc.execute(66666666, goal.booking_date, goal.name)
+    remove_uc.execute(66666666, goal.class_start, goal.name)
     user_after = json_repo.get_user(66666666)
     assert len(user_after.booking_goals) == 0
 
@@ -120,7 +120,7 @@ def test_startup_recovery_with_real_components(schedule_file_with_goal):
         for goal in user.booking_goals:
             schedule_uc.execute(
                 user_id=user.id,
-                booking_date=goal.booking_date,
+                class_start=goal.class_start,
                 class_name=goal.name,
             )
 
@@ -149,7 +149,7 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
 
     mock_client = MagicMock()
     mock_client.get_classes.return_value = [
-        GymClass(name="WOD", scheduled_at=datetime(2027, 6, 15, 10, 0), spots_available=5, max_spots=20)
+        GymClass(name="WOD", class_start=datetime(2027, 6, 15, 10, 0), spots_available=5, max_spots=20)
     ]
     mock_factory = MagicMock(spec=IGymClientFactory)
     mock_factory.create.return_value = mock_client
@@ -160,8 +160,8 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
         json_repo, json_repo, mock_factory, mock_user_notifier, mock_group_notifier
     )
 
-    booking_date = datetime(2027, 6, 15, 10, 0)
-    execute_uc.execute(66666666, booking_date, "WOD")
+    class_start = datetime(2027, 6, 15, 10, 0)
+    execute_uc.execute(66666666, class_start, "WOD")
 
     # Gym client's book_class was called
     mock_client.book_class.assert_called_once()
@@ -184,24 +184,24 @@ def test_apscheduler_fires_execute_handler():
 
     calls = []
 
-    def mock_handler(user_id, booking_date, class_name):
-        calls.append((user_id, booking_date, class_name))
+    def mock_handler(user_id, class_start, class_name):
+        calls.append((user_id, class_start, class_name))
 
     apscheduler = APSchedulerAdapter(on_job_execute=mock_handler)
     apscheduler.start()
 
     try:
         run_at = datetime(2020, 1, 1, 0, 0, 0)  # past timestamp → fires immediately
-        booking_date = datetime(2027, 6, 15, 10, 0)
+        class_start = datetime(2027, 6, 15, 10, 0)
         apscheduler.schedule_job(
-            run_at, user_id=66666666, booking_date=booking_date, class_name="WOD"
+            run_at, user_id=66666666, class_start=class_start, class_name="WOD"
         )
         time_module.sleep(0.2)
     finally:
         apscheduler._scheduler.shutdown(wait=False)
 
     assert len(calls) == 1
-    assert calls[0] == (66666666, booking_date, "WOD")
+    assert calls[0] == (66666666, class_start, "WOD")
 
 
 # ── Test 6: path resolution from infrastructure location ─────────────────────

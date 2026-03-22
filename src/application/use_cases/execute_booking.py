@@ -22,33 +22,33 @@ class ExecuteBookingUseCase:
         self._user_notifier = user_notifier
         self._group_notifier = group_notifier
 
-    def execute(self, user_id: int, booking_date: datetime, class_name: str) -> None:
+    def execute(self, user_id: int, class_start: datetime, class_name: str) -> None:
         user = self._user_repo.get_user(user_id)
         if user is None:
             raise ValueError(f"User {user_id} not found")
 
         client = self._gym_client_factory.create(user.email, user.password)
-        classes = client.get_classes(booking_date)
+        classes = client.get_classes(class_start)
 
         if not classes:
             raise BoxClosed(MESSAGE_BOX_IS_CLOSED)
 
         matched = next(
-            (c for c in classes if c.scheduled_at == booking_date and class_name in c.name),
+            (c for c in classes if c.class_start == class_start and class_name in c.name),
             None,
         )
         if matched is None:
             raise NoBookingGoal(
-                f"No class '{class_name}' at {booking_date.strftime('%H:%M')} on {booking_date.date()}"
+                f"No class '{class_name}' at {class_start.strftime('%H:%M')} on {class_start.date()}"
             )
 
         client.book_class(matched)
 
-        self._booking_repo.remove_booking_goal(user_id, booking_date, class_name)
+        self._booking_repo.remove_booking_goal(user_id, class_start, class_name)
 
         msg = (
             f"class booked for {user.email}: {class_name} "
-            f"{booking_date.strftime('%H:%M')}"
+            f"{class_start.strftime('%H:%M')}"
         )
         self._user_notifier.notify_user(user_id, msg)
         self._group_notifier.notify_group(msg)

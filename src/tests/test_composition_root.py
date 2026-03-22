@@ -96,7 +96,7 @@ def test_startup_recovery_reschedules_all_user_goals(mocker):
             password="pw",
             booking_goals=[
                 BookingGoal(
-                    booking_date=datetime(2027, 3, 15, 18, 30),
+                    class_start=datetime(2027, 3, 15, 18, 30),
                     name="WOD",
                 )
             ],
@@ -108,7 +108,7 @@ def test_startup_recovery_reschedules_all_user_goals(mocker):
     schedule_uc = mock_schedule_uc_cls.return_value
     schedule_uc.execute.assert_called_once_with(
         user_id=1,
-        booking_date=datetime(2027, 3, 15, 18, 30),
+        class_start=datetime(2027, 3, 15, 18, 30),
         class_name="WOD",
     )
 
@@ -131,8 +131,8 @@ def test_startup_recovery_multiple_users(mocker):
             email="a@b.com",
             password="pw",
             booking_goals=[
-                BookingGoal(booking_date=datetime(2027, 3, 15, 18, 30), name="WOD"),
-                BookingGoal(booking_date=datetime(2027, 3, 16, 10, 0), name="OPEN"),
+                BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), name="WOD"),
+                BookingGoal(class_start=datetime(2027, 3, 16, 10, 0), name="OPEN"),
             ],
         ),
         User(
@@ -140,7 +140,7 @@ def test_startup_recovery_multiple_users(mocker):
             email="b@c.com",
             password="pw2",
             booking_goals=[
-                BookingGoal(booking_date=datetime(2027, 3, 17, 9, 0), name="GYMNASTIC"),
+                BookingGoal(class_start=datetime(2027, 3, 17, 9, 0), name="GYMNASTIC"),
             ],
         ),
     ]

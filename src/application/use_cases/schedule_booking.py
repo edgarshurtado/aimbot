@@ -20,19 +20,19 @@ class ScheduleBookingUseCase:
         self._scheduler = scheduler
         self._platform_config = platform_config
 
-    def execute(self, user_id: int, booking_date: datetime, class_name: str) -> None:
+    def execute(self, user_id: int, class_start: datetime, class_name: str) -> None:
         user = self._user_repo.get_user(user_id)
         if user is None:
             raise ValueError(f"User {user_id} not found")
 
-        trigger = self._platform_config.booking_trigger_time(booking_date)
+        trigger = self._platform_config.booking_trigger_time(class_start)
         self._scheduler.schedule_job(
             run_at=trigger,
             user_id=user_id,
-            booking_date=booking_date,
+            class_start=class_start,
             class_name=class_name,
         )
         self._booking_repo.add_booking_goal(
             user_id,
-            BookingGoal(booking_date=booking_date, name=class_name),
+            BookingGoal(class_start=class_start, name=class_name),
         )

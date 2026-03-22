@@ -116,7 +116,7 @@ class TelegramBot:
         response = ""
         for idx, goal in enumerate(user.booking_goals):
             response += (
-                f"{idx + 1}. {goal.booking_date.strftime('%d-%m-%Y %H:%M')} {goal.name}\n"
+                f"{idx + 1}. {goal.class_start.strftime('%d-%m-%Y %H:%M')} {goal.name}\n"
             )
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
 
@@ -223,11 +223,11 @@ class TelegramBot:
             return ConversationHandler.END
 
         hour, minute = map(int, selected_time.split(":"))
-        booking_date = selected_date.replace(hour=hour, minute=minute)
+        class_start = selected_date.replace(hour=hour, minute=minute)
 
         self._schedule_uc.execute(
             user_id=update.effective_user.id,
-            booking_date=booking_date,
+            class_start=class_start,
             class_name=class_name,
         )
 
@@ -237,7 +237,7 @@ class TelegramBot:
             chat_id=update.effective_chat.id,
             text=(
                 f"✅ Booking scheduled for {email}\n"
-                f"📅 {booking_date.strftime('%d/%m/%Y %H:%M')}\n"
+                f"📅 {class_start.strftime('%d/%m/%Y %H:%M')}\n"
                 f"🏋️ {class_name}"
             ),
             reply_markup=ReplyKeyboardRemove(),
@@ -265,7 +265,7 @@ class TelegramBot:
 
         user = self._user_repo.get_user(update.effective_user.id)
         selected_goal = user.booking_goals[idx]
-        self._remove_uc.execute(update.effective_user.id, selected_goal.booking_date, selected_goal.name)
+        self._remove_uc.execute(update.effective_user.id, selected_goal.class_start, selected_goal.name)
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
