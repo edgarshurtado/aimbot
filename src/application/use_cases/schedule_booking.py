@@ -34,5 +34,5 @@ class ScheduleBookingUseCase:
         )
         self._booking_repo.add_booking_goal(
             user_id,
-            BookingGoal(class_start=class_start, name=class_name),
+            BookingGoal(class_start=class_start, class_name=class_name),
         )

@@ -116,7 +116,7 @@ class TelegramBot:
         response = ""
         for idx, goal in enumerate(user.booking_goals):
             response += (
-                f"{idx + 1}. {goal.class_start.strftime('%d-%m-%Y %H:%M')} {goal.name}\n"
+                f"{idx + 1}. {goal.class_start.strftime('%d-%m-%Y %H:%M')} {goal.class_name}\n"
             )
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
 
@@ -265,7 +265,7 @@ class TelegramBot:
 
         user = self._user_repo.get_user(update.effective_user.id)
         selected_goal = user.booking_goals[idx]
-        self._remove_uc.execute(update.effective_user.id, selected_goal.class_start, selected_goal.name)
+        self._remove_uc.execute(update.effective_user.id, selected_goal.class_start, selected_goal.class_name)
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,

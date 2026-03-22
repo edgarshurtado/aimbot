@@ -40,13 +40,13 @@ class JsonRepository(IUserRepository, IBookingRepository):
     def _raw_to_booking_goal(self, raw: dict) -> BookingGoal:
         return BookingGoal(
             class_start=datetime.strptime(raw["datetime"], self._DATETIME_FMT),
-            name=raw["name"],
+            class_name=raw["name"],
         )
 
     def _booking_goal_to_raw(self, goal: BookingGoal) -> dict:
         return {
             "datetime": goal.class_start.strftime(self._DATETIME_FMT),
-            "name": goal.name,
+            "name": goal.class_name,
         }
 
     def _raw_to_user(self, raw_entry: dict) -> User:

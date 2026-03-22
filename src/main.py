@@ -37,7 +37,7 @@ def bootstrap():
             schedule_uc.execute(
                 user_id=user.id,
                 class_start=goal.class_start,
-                class_name=goal.name,
+                class_name=goal.class_name,
             )
 
     apscheduler.start()

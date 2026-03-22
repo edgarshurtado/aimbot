@@ -28,7 +28,7 @@ def _make_user(user_id=123, email="a@b.com", password="pw"):
 
 
 def _make_goal():
-    return BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), name="WOD")
+    return BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
 
 
 def test_execute_booking_happy_path(execute_booking):

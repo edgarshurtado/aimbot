@@ -38,7 +38,7 @@ def test_schedule_booking_creates_job_and_persists_goal(schedule_booking):
         123,
         BookingGoal(
             class_start=datetime(2027, 3, 15, 18, 30),
-            name="WOD",
+            class_name="WOD",
         ),
     )
 

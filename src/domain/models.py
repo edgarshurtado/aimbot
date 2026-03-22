@@ -13,7 +13,7 @@ class GymClass:
 @dataclass
 class BookingGoal:
     class_start: datetime
-    name: str
+    class_name: str
 
 
 @dataclass

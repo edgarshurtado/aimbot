@@ -90,12 +90,12 @@ def test_schedule_then_remove_roundtrip(schedule_file):
     user = json_repo.get_user(66666666)
     assert len(user.booking_goals) == 1
     goal = user.booking_goals[0]
-    assert goal.name == "WOD"
+    assert goal.class_name == "WOD"
     assert goal.class_start == class_start
 
 
     # After remove: user has 0 booking goals
-    remove_uc.execute(66666666, goal.class_start, goal.name)
+    remove_uc.execute(66666666, goal.class_start, goal.class_name)
     user_after = json_repo.get_user(66666666)
     assert len(user_after.booking_goals) == 0
 
@@ -121,7 +121,7 @@ def test_startup_recovery_with_real_components(schedule_file_with_goal):
             schedule_uc.execute(
                 user_id=user.id,
                 class_start=goal.class_start,
-                class_name=goal.name,
+                class_name=goal.class_name,
             )
 
     # APScheduler should have exactly 1 job scheduled
@@ -131,7 +131,7 @@ def test_startup_recovery_with_real_components(schedule_file_with_goal):
     # Repo still has exactly 1 goal (dedup fired — not duplicated)
     user = json_repo.get_user(66666666)
     assert len(user.booking_goals) == 1
-    assert user.booking_goals[0].name == "WOD"
+    assert user.booking_goals[0].class_name == "WOD"
 
 
 # ── Test 4: execute booking with real repo and mocked HTTP ───────────────────
