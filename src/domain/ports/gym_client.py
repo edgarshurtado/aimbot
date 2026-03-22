@@ -1,11 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from domain.models import GymClass
-
-
-class IGymPlatformConfig(ABC):
-    @abstractmethod
-    def booking_trigger_time(self, class_date: datetime) -> datetime: ...
+from domain.models import GymClass, User
 
 
 class IGymClient(ABC):
@@ -18,4 +13,4 @@ class IGymClient(ABC):
 
 class IGymClientFactory(ABC):
     @abstractmethod
-    def create(self, email: str, password: str) -> IGymClient: ...
+    def create(self, user: User) -> IGymClient: ...
