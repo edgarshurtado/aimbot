@@ -2,6 +2,7 @@ import inspect
 import pytest
 from datetime import datetime
 
+from domain.exceptions import UserNotFound
 from domain.models import User, BookingGoal
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_config import IGymConfig
@@ -42,7 +43,7 @@ def test_schedule_booking_user_not_found(schedule_booking):
 
     user_repo.get_user.return_value = None
 
-    with pytest.raises(Exception):
+    with pytest.raises(UserNotFound):
         uc.execute(user_id=999, class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
 
     scheduler.schedule_job.assert_not_called()

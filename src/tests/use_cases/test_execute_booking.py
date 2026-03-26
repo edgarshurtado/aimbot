@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
 
-from domain.exceptions import BookingFailed, BoxClosed
+from domain.exceptions import BookingFailed, UserNotFound
 from domain.models import BookingGoal, GymClass, User
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClient, IGymClientFactory
@@ -71,7 +71,7 @@ def test_execute_booking_user_not_found(execute_booking):
 
     user_repo.get_user.return_value = None
 
-    with pytest.raises(Exception):
+    with pytest.raises(UserNotFound):
         uc.execute(999, goal)
 
     factory.create.assert_not_called()
@@ -95,7 +95,7 @@ def test_execute_booking_box_closed(execute_booking):
     user_repo.get_user.return_value = _make_user()
     client.get_classes.return_value = []
 
-    with pytest.raises(BoxClosed):
+    with pytest.raises(BookingFailed):
         uc.execute(123, goal)
 
 

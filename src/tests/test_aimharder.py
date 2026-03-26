@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
 from domain.models import GymClass
-from domain.exceptions import ErrorResponse, IncorrectCredentials, BookingFailed
+from domain.exceptions import AuthenticationFailed, BookingFailed
 from domain.ports.gym_client import IGymClientFactory
 from infrastructure.aimharder.client import AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory
@@ -40,13 +40,13 @@ def factory(gym):
 
 def test_client_login_incorrect_credentials(http_mock):
     http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">Wrong email and/or password</span></html>')
-    with pytest.raises(IncorrectCredentials):
+    with pytest.raises(AuthenticationFailed):
         AimHarderClient("foo@bar.com", "wrongpass", BOX_ID, BOX_NAME)
 
 
 def test_client_login_unknown_error(http_mock):
     http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, body=b'<html><span id="loginErrors">some unexpected error</span></html>')
-    with pytest.raises(ErrorResponse):
+    with pytest.raises(AuthenticationFailed):
         AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
 

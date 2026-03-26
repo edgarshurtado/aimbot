@@ -1,8 +1,8 @@
 from domain.exceptions import (
     BookingFailed,
-    BoxClosed,
     MESSAGE_BOX_IS_CLOSED,
     MESSAGE_GYM_CLASS_NOT_FOUND,
+    UserNotFound,
 )
 from domain.models import BookingGoal
 from domain.ports.booking_repository import IBookingRepository
@@ -29,13 +29,13 @@ class ExecuteBookingUseCase:
     def execute(self, user_id: int, booking_goal: BookingGoal) -> None:
         user = self._user_repo.get_user(user_id)
         if user is None:
-            raise ValueError(f"User {user_id} not found")
+            raise UserNotFound(f"User {user_id} not found")
 
         client = self._gym_client_factory.create(user)
         classes = client.get_classes(booking_goal.class_start)
 
         if not classes:
-            raise BoxClosed(MESSAGE_BOX_IS_CLOSED)
+            raise BookingFailed(MESSAGE_BOX_IS_CLOSED)
 
         matched = next(
             (

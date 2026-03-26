@@ -3,10 +3,10 @@ import json
 import os
 from datetime import datetime
 
+from domain.exceptions import UserNotFound
 from domain.models import User, BookingGoal
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.user_repository import IUserRepository
-from error_handling import Result, UserNotFound
 
 
 class JsonRepository(IUserRepository, IBookingRepository):
@@ -80,10 +80,10 @@ class JsonRepository(IUserRepository, IBookingRepository):
             return []
         return [self._raw_to_booking_goal(bg) for bg in raw.get("bookingGoals", [])]
 
-    def add_booking_goal(self, user_id: int, goal: BookingGoal) -> Result:
+    def add_booking_goal(self, user_id: int, goal: BookingGoal) -> None:
         raw = self._find_raw_user(user_id)
         if raw is None:
-            return Result(success=False, error=UserNotFound())
+            raise UserNotFound(f"User {user_id} not found")
 
         goals_list = raw.setdefault("bookingGoals", [])
 
@@ -93,11 +93,10 @@ class JsonRepository(IUserRepository, IBookingRepository):
             if (existing["datetime"] == raw_goal["datetime"]
                     and existing["name"] == raw_goal["name"]):
                 self._save()
-                return Result(success=True)
+                return
 
         goals_list.append(raw_goal)
         self._save()
-        return Result(success=True)
 
     def remove_booking_goal(self, user_id: int, goal: BookingGoal) -> None:
         raw = self._find_raw_user(user_id)

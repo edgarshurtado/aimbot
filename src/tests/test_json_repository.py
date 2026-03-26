@@ -1,8 +1,8 @@
 import pytest
 from datetime import datetime
 
+from domain.exceptions import UserNotFound
 from domain.models import User, BookingGoal
-from error_handling import UserNotFound
 from infrastructure.persistence.json_repository import JsonRepository
 
 
@@ -75,8 +75,7 @@ def test_add_booking_goal_succeeds_for_known_user(repository):
         class_start=datetime(2027, 1, 18, 18, 30),
         class_name="WOD",
     )
-    result = repository.add_booking_goal(66666666, goal)
-    assert result.success is True
+    repository.add_booking_goal(66666666, goal)
 
     bookings = repository.get_user_bookings(66666666)
     assert len(bookings) == 1
@@ -89,9 +88,8 @@ def test_add_booking_goal_fails_for_unknown_user(repository):
         class_start=datetime(2027, 1, 18, 18, 30),
         class_name="WOD",
     )
-    result = repository.add_booking_goal(99999999, goal)
-    assert result.success is False
-    assert isinstance(result.error, UserNotFound)
+    with pytest.raises(UserNotFound):
+        repository.add_booking_goal(99999999, goal)
 
 
 def test_add_booking_goal_dedup_does_not_duplicate(repository):

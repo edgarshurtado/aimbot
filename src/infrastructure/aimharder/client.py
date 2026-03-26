@@ -6,14 +6,17 @@ from requests import Session
 
 from constants import LOGIN_ENDPOINT, ERROR_TAG_ID, book_endpoint, classes_endpoint
 from domain.exceptions import (
+    AuthenticationFailed,
     BookingFailed,
-    ErrorResponse,
-    IncorrectCredentials,
     MESSAGE_BOOKING_FAILED_NO_CREDIT,
     MESSAGE_BOOKING_FAILED_UNKNOWN,
 )
 from domain.models import GymClass
 from domain.ports.gym_client import IGymClient
+from infrastructure.aimharder.exceptions import (
+    IncorrectCredentials,
+    TooManyWrongAttempts,
+)
 from infrastructure.aimharder.raw_booking import RawBooking
 
 
@@ -35,8 +38,10 @@ class AimHarderClient(IGymClient):
         soup = BeautifulSoup(response.content, "html.parser").find(id=ERROR_TAG_ID)
         if soup is not None and soup.text:
             if IncorrectCredentials.key_phrase in soup.text:
-                raise IncorrectCredentials(soup.text)
-            raise ErrorResponse(soup.text)
+                raise AuthenticationFailed(soup.text)
+            if TooManyWrongAttempts.key_phrase in soup.text:
+                raise AuthenticationFailed(soup.text)
+            raise AuthenticationFailed(soup.text)
         return session
 
     def get_classes(self, target_day: datetime) -> list[GymClass]:
