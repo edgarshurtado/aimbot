@@ -1,4 +1,9 @@
-from domain.exceptions import BookingFailed, BoxClosed, MESSAGE_BOX_IS_CLOSED
+from domain.exceptions import (
+    BookingFailed,
+    BoxClosed,
+    MESSAGE_BOX_IS_CLOSED,
+    MESSAGE_GYM_CLASS_NOT_FOUND,
+)
 from domain.models import BookingGoal
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClientFactory
@@ -43,7 +48,7 @@ class ExecuteBookingUseCase:
         )
         if matched is None:
             raise BookingFailed(
-                f"Gym class not found: '{booking_goal.class_name}' at "
+                f"{MESSAGE_GYM_CLASS_NOT_FOUND}: '{booking_goal.class_name}' at "
                 f"{booking_goal.class_start.strftime('%H:%M')} on "
                 f"{booking_goal.class_start.date()}"
             )
