@@ -97,7 +97,7 @@ def test_schedule_then_remove_roundtrip(schedule_file):
 
 
     # After remove: user has 0 booking goals
-    remove_uc.execute(66666666, goal.class_start, goal.class_name)
+    remove_uc.execute(66666666, goal)
     user_after = json_repo.get_user(66666666)
     assert len(user_after.booking_goals) == 0
 
@@ -165,7 +165,8 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
     )
 
     class_start = datetime(2027, 6, 15, 10, 0)
-    execute_uc.execute(66666666, class_start, "WOD")
+    from domain.models import BookingGoal
+    execute_uc.execute(66666666, BookingGoal(class_start=class_start, class_name="WOD"))
 
     # Gym client's book_class was called
     mock_client.book_class.assert_called_once()
@@ -186,26 +187,25 @@ def test_apscheduler_fires_execute_handler():
     """Real APSchedulerAdapter fires the handler with correct arguments."""
     from infrastructure.scheduling.apscheduler import APSchedulerAdapter
 
+    from domain.models import BookingGoal
     calls = []
 
-    def mock_handler(user_id, class_start, class_name):
-        calls.append((user_id, class_start, class_name))
+    def mock_handler(user_id, booking_goal):
+        calls.append((user_id, booking_goal))
 
     apscheduler = APSchedulerAdapter(on_job_execute=mock_handler)
     apscheduler.start()
 
+    goal = BookingGoal(class_start=datetime(2027, 6, 15, 10, 0), class_name="WOD")
     try:
-        run_at = datetime(2020, 1, 1, 0, 0, 0)  # past timestamp → fires immediately
-        class_start = datetime(2027, 6, 15, 10, 0)
-        apscheduler.schedule_job(
-            run_at, user_id=66666666, class_start=class_start, class_name="WOD"
-        )
+        run_at = datetime(2020, 1, 1, 0, 0, 0)  # past timestamp -> fires immediately
+        apscheduler.schedule_job(run_at, user_id=66666666, booking_goal=goal)
         time_module.sleep(0.2)
     finally:
         apscheduler._scheduler.shutdown(wait=False)
 
     assert len(calls) == 1
-    assert calls[0] == (66666666, class_start, "WOD")
+    assert calls[0] == (66666666, goal)
 
 
 # ── Test 6: path resolution from infrastructure location ─────────────────────

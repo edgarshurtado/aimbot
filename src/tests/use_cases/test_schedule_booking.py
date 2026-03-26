@@ -28,19 +28,13 @@ def test_schedule_booking_creates_job_and_persists_goal(schedule_booking):
 
     uc.execute(user_id=123, class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
 
+    expected_goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
     scheduler.schedule_job.assert_called_once_with(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=123,
-        class_start=datetime(2027, 3, 15, 18, 30),
-        class_name="WOD",
+        booking_goal=expected_goal,
     )
-    booking_repo.add_booking_goal.assert_called_once_with(
-        123,
-        BookingGoal(
-            class_start=datetime(2027, 3, 15, 18, 30),
-            class_name="WOD",
-        ),
-    )
+    booking_repo.add_booking_goal.assert_called_once_with(123, expected_goal)
 
 
 def test_schedule_booking_user_not_found(schedule_booking):

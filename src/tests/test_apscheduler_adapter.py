@@ -3,6 +3,7 @@ import pytest
 from datetime import datetime
 
 from apscheduler.triggers.date import DateTrigger
+from domain.models import BookingGoal
 from domain.ports.scheduler import IJobScheduler
 from infrastructure.scheduling.apscheduler import APSchedulerAdapter
 
@@ -20,11 +21,11 @@ def test_implements_ischeduler(adapter):
 
 def test_schedule_job_creates_date_trigger(adapter):
     a, _ = adapter
+    goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
     a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=123,
-        class_start=datetime(2027, 3, 15, 18, 30),
-        class_name="WOD",
+        booking_goal=goal,
     )
     jobs = a._scheduler.get_jobs()
     assert len(jobs) == 1
@@ -36,33 +37,32 @@ def test_scheduled_job_calls_handler_with_correct_args(mocker):
     handler = mocker.Mock()
     a = APSchedulerAdapter(on_job_execute=handler)
 
-    class_start = datetime(2027, 3, 15, 18, 30)
+    goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
     a.schedule_job(
-        run_at=datetime(2020, 1, 1, 0, 0),  # in the past → fires immediately
+        run_at=datetime(2020, 1, 1, 0, 0),  # in the past -> fires immediately
         user_id=123,
-        class_start=class_start,
-        class_name="WOD",
+        booking_goal=goal,
     )
     a.start()
     time.sleep(0.2)  # give scheduler time to fire
 
-    handler.assert_called_once_with(123, class_start, "WOD")
+    handler.assert_called_once_with(123, goal)
     a._scheduler.shutdown(wait=False)
 
 
 def test_remove_job_removes_scheduled_job(adapter):
     from apscheduler.jobstores.base import JobLookupError
     a, _ = adapter
+    goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
     a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=123,
-        class_start=datetime(2027, 3, 15, 18, 30),
-        class_name="WOD",
+        booking_goal=goal,
     )
-    a.remove_job(123, datetime(2027, 3, 15, 18, 30), "WOD")
+    a.remove_job(123, goal)
 
     with pytest.raises(JobLookupError):
-        a.remove_job(123, datetime(2027, 3, 15, 18, 30), "WOD")
+        a.remove_job(123, goal)
 
 
 def test_start_starts_scheduler(mocker):
@@ -75,16 +75,16 @@ def test_start_starts_scheduler(mocker):
 
 def test_schedule_job_different_bookings_create_separate_jobs(adapter):
     a, _ = adapter
+    goal1 = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+    goal2 = BookingGoal(class_start=datetime(2027, 3, 16, 10, 0), class_name="OPEN")
     a.schedule_job(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=1,
-        class_start=datetime(2027, 3, 15, 18, 30),
-        class_name="WOD",
+        booking_goal=goal1,
     )
     a.schedule_job(
         run_at=datetime(2027, 3, 13, 10, 0),
         user_id=2,
-        class_start=datetime(2027, 3, 16, 10, 0),
-        class_name="OPEN",
+        booking_goal=goal2,
     )
     assert len(a._scheduler.get_jobs()) == 2

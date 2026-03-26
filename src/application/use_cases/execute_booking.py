@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from domain.exceptions import BoxClosed, NoBookingGoal, MESSAGE_BOX_IS_CLOSED
+from domain.models import BookingGoal
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClientFactory
 from domain.ports.notifier import IGroupNotifier, IUserNotifier
@@ -22,33 +21,42 @@ class ExecuteBookingUseCase:
         self._user_notifier = user_notifier
         self._group_notifier = group_notifier
 
-    def execute(self, user_id: int, class_start: datetime, class_name: str) -> None:
+    def execute(self, user_id: int, booking_goal: BookingGoal) -> None:
         user = self._user_repo.get_user(user_id)
         if user is None:
             raise ValueError(f"User {user_id} not found")
 
-        client = self._gym_client_factory.create(user.email, user.password)
-        classes = client.get_classes(class_start)
+        client = self._gym_client_factory.create(user)
+        classes = client.get_classes(booking_goal.class_start)
 
         if not classes:
             raise BoxClosed(MESSAGE_BOX_IS_CLOSED)
 
         matched = next(
-            (c for c in classes if c.class_start == class_start and class_name in c.name),
+            (
+                c
+                for c in classes
+                if c.class_start == booking_goal.class_start
+                and booking_goal.class_name in c.name
+            ),
             None,
         )
         if matched is None:
             raise NoBookingGoal(
-                f"No class '{class_name}' at {class_start.strftime('%H:%M')} on {class_start.date()}"
+                f"No class '{booking_goal.class_name}' at "
+                f"{booking_goal.class_start.strftime('%H:%M')} on "
+                f"{booking_goal.class_start.date()}"
             )
 
         client.book_class(matched)
 
-        self._booking_repo.remove_booking_goal(user_id, class_start, class_name)
+        self._booking_repo.remove_booking_goal(
+            user_id, booking_goal.class_start, booking_goal.class_name
+        )
 
         msg = (
-            f"class booked for {user.email}: {class_name} "
-            f"{class_start.strftime('%H:%M')}"
+            f"class booked for {user.email}: {booking_goal.class_name} "
+            f"{booking_goal.class_start.strftime('%H:%M')}"
         )
         self._user_notifier.notify_user(user_id, msg)
         self._group_notifier.notify_group(msg)

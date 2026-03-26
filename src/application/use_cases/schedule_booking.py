@@ -25,14 +25,11 @@ class ScheduleBookingUseCase:
         if user is None:
             raise ValueError(f"User {user_id} not found")
 
+        booking_goal = BookingGoal(class_start=class_start, class_name=class_name)
         trigger = self._gym_config.booking_trigger_time(class_start)
         self._scheduler.schedule_job(
             run_at=trigger,
             user_id=user_id,
-            class_start=class_start,
-            class_name=class_name,
+            booking_goal=booking_goal,
         )
-        self._booking_repo.add_booking_goal(
-            user_id,
-            BookingGoal(class_start=class_start, class_name=class_name),
-        )
+        self._booking_repo.add_booking_goal(user_id, booking_goal)

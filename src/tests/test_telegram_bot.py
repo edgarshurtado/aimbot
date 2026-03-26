@@ -191,7 +191,9 @@ async def test_remove_handler_calls_remove_use_case(telegram_bot, mocker):
 
     await bot._TelegramBot__remove_booking_handler(update, context)
 
-    remove_uc.execute.assert_called_once_with(12345, datetime(2027, 1, 18, 18, 30), "WOD")
+    remove_uc.execute.assert_called_once_with(
+        12345, BookingGoal(class_start=datetime(2027, 1, 18, 18, 30), class_name="WOD")
+    )
 
 
 # ── Domain objects (not raw dicts) ─────────────────────────────────────────────
