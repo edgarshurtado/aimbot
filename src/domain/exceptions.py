@@ -15,9 +15,6 @@ class BookingFailed(Exception):
     pass
 
 
-class NoBookingGoal(Exception):
-    pass
-
 
 class BoxClosed(Exception):
     pass

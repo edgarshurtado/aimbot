@@ -63,7 +63,7 @@ def test_full_wiring_no_import_errors():
     from application.use_cases.execute_booking import ExecuteBookingUseCase  # noqa: F401
     from application.use_cases.remove_booking import RemoveBookingUseCase  # noqa: F401
     from domain.models import GymClass, BookingGoal, User  # noqa: F401
-    from domain.exceptions import BoxClosed, NoBookingGoal  # noqa: F401
+    from domain.exceptions import BoxClosed, BookingFailed  # noqa: F401
 
 
 # ── Test 2: schedule → remove roundtrip ──────────────────────────────────────

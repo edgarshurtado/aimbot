@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
 
-from domain.exceptions import NoBookingGoal, BoxClosed
+from domain.exceptions import BookingFailed, BoxClosed
 from domain.models import BookingGoal, GymClass, User
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClient, IGymClientFactory
@@ -84,7 +84,7 @@ def test_execute_booking_no_matching_class_raises(execute_booking):
     user_repo.get_user.return_value = _make_user()
     client.get_classes.return_value = [GymClass(name="OPEN", class_start=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10)]
 
-    with pytest.raises(NoBookingGoal):
+    with pytest.raises(BookingFailed):
         uc.execute(123, goal)
 
 
