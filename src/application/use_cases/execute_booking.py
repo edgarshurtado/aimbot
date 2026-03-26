@@ -50,9 +50,7 @@ class ExecuteBookingUseCase:
 
         client.book_class(matched)
 
-        self._booking_repo.remove_booking_goal(
-            user_id, booking_goal.class_start, booking_goal.class_name
-        )
+        self._booking_repo.remove_booking_goal(user_id, booking_goal)
 
         msg = (
             f"class booked for {user.email}: {booking_goal.class_name} "

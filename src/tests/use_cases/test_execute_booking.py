@@ -41,7 +41,7 @@ def test_execute_booking_happy_path(execute_booking):
     uc.execute(123, goal)
 
     client.book_class.assert_called_once_with(GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20))
-    booking_repo.remove_booking_goal.assert_called_once_with(123, datetime(2027, 3, 15, 18, 30), "WOD")
+    booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
     user_notifier.notify_user.assert_called_once()
     args = user_notifier.notify_user.call_args.args
     assert args[0] == 123
@@ -108,7 +108,7 @@ def test_execute_booking_cleans_up_goal(execute_booking):
 
     uc.execute(123, goal)
 
-    booking_repo.remove_booking_goal.assert_called_once_with(123, datetime(2027, 3, 15, 18, 30), "WOD")
+    booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
 
 
 def test_execute_booking_notifies_user_and_group(execute_booking):

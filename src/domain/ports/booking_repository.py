@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
 from domain.models import BookingGoal
 from error_handling import Result
 
@@ -12,4 +11,4 @@ class IBookingRepository(ABC):
     def add_booking_goal(self, user_id: int, goal: BookingGoal) -> Result: ...
 
     @abstractmethod
-    def remove_booking_goal(self, user_id: int, class_start: datetime, class_name: str) -> None: ...
+    def remove_booking_goal(self, user_id: int, goal: BookingGoal) -> None: ...

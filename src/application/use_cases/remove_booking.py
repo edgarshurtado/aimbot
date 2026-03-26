@@ -14,6 +14,4 @@ class RemoveBookingUseCase:
 
     def execute(self, user_id: int, booking_goal: BookingGoal) -> None:
         self._scheduler.remove_job(user_id, booking_goal)
-        self._booking_repo.remove_booking_goal(
-            user_id, booking_goal.class_start, booking_goal.class_name
-        )
+        self._booking_repo.remove_booking_goal(user_id, booking_goal)

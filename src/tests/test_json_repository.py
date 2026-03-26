@@ -109,7 +109,7 @@ def test_remove_booking_goal(repository):
     goal = BookingGoal(class_start=datetime(2027, 2, 10, 9, 0), class_name="WOD")
     repository.add_booking_goal(66666666, goal)
 
-    repository.remove_booking_goal(66666666, datetime(2027, 2, 10, 9, 0), "WOD")
+    repository.remove_booking_goal(66666666, goal)
 
     bookings = repository.get_user_bookings(66666666)
     assert len(bookings) == 0
@@ -141,7 +141,9 @@ def test_dedup_does_not_fire_when_only_date_matches(repository):
 
 def test_remove_nonexistent_goal_is_safe(repository):
     """Removing a non-existent goal should not raise."""
-    repository.remove_booking_goal(66666666, datetime(2099, 1, 1, 0, 0), "NONEXISTENT")
+    repository.remove_booking_goal(
+        66666666, BookingGoal(class_start=datetime(2099, 1, 1, 0, 0), class_name="NONEXISTENT")
+    )
     assert repository.get_user_bookings(66666666) == []
 
 

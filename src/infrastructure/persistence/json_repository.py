@@ -99,13 +99,13 @@ class JsonRepository(IUserRepository, IBookingRepository):
         self._save()
         return Result(success=True)
 
-    def remove_booking_goal(self, user_id: int, class_start: datetime, class_name: str) -> None:
+    def remove_booking_goal(self, user_id: int, goal: BookingGoal) -> None:
         raw = self._find_raw_user(user_id)
         if raw is None:
             return
-        date_str = class_start.strftime(self._DATETIME_FMT)
+        date_str = goal.class_start.strftime(self._DATETIME_FMT)
         raw["bookingGoals"] = [
             bg for bg in raw.get("bookingGoals", [])
-            if not (bg["datetime"] == date_str and bg["name"] == class_name)
+            if not (bg["datetime"] == date_str and bg["name"] == goal.class_name)
         ]
         self._save()

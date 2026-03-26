@@ -22,9 +22,7 @@ def test_remove_booking_removes_job_and_goal(remove_booking):
     uc.execute(user_id=123, booking_goal=goal)
 
     scheduler.remove_job.assert_called_once_with(123, goal)
-    booking_repo.remove_booking_goal.assert_called_once_with(
-        123, datetime(2027, 3, 15, 18, 30), "WOD"
-    )
+    booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
 
 
 def test_remove_booking_calls_scheduler_before_repo(remove_booking):
