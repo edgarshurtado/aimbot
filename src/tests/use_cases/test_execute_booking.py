@@ -62,7 +62,7 @@ def test_execute_booking_happy_path(
 ):
     goal = _make_goal()
 
-    user_repo.get_user.return_value = _make_user()
+    user_repo.get_user.return_value = _make_user(user_id=123)
     mock_client.get_classes.return_value = [
         GymClass(
             name="WOD",
@@ -72,7 +72,7 @@ def test_execute_booking_happy_path(
         )
     ]
 
-    execute_uc.execute(123, goal)
+    execute_uc.execute(user_id=123, booking_goal=goal)
 
     mock_client.book_class.assert_called_once_with(
         GymClass(
@@ -83,11 +83,9 @@ def test_execute_booking_happy_path(
         )
     )
     booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
-    user_notifier.notify_user.assert_called_once()
-    args = user_notifier.notify_user.call_args.args
-    assert args[0] == 123
-    assert "WOD" in args[1]
-    group_notifier.notify_group.assert_called_once()
+    expected_msg = "class booked for a@b.com: WOD 18:30"
+    user_notifier.notify_user.assert_called_once_with(123, expected_msg)
+    group_notifier.notify_group.assert_called_once_with(expected_msg)
 
 
 def test_execute_booking_matches_by_time_and_name(
@@ -204,10 +202,9 @@ def test_execute_booking_notifies_user_and_group(
 
     execute_uc.execute(123, goal)
 
-    user_notifier.notify_user.assert_called_once()
-    group_notifier.notify_group.assert_called_once()
-    msg = user_notifier.notify_user.call_args.args[1]
-    assert "WOD" in msg
+    expected_msg = "class booked for a@b.com: WOD 18:30"
+    user_notifier.notify_user.assert_called_once_with(123, expected_msg)
+    group_notifier.notify_group.assert_called_once_with(expected_msg)
 
 
 def test_execute_booking_uses_class_start_for_get_classes(
