@@ -1,7 +1,12 @@
 import pytest
 from datetime import datetime
 
-from domain.exceptions import BookingFailed, UserNotFound
+from domain.exceptions import (
+    BookingFailed,
+    MESSAGE_BOX_IS_CLOSED,
+    MESSAGE_GYM_CLASS_NOT_FOUND,
+    UserNotFound,
+)
 from domain.models import BookingGoal, GymClass, User
 from domain.ports.gym_client import IGymClient, IGymClientFactory
 from domain.ports.notifier import IUserNotifier
@@ -132,14 +137,14 @@ def test_execute_booking_no_matching_class_raises(execute_uc, mock_client):
         )
     ]
 
-    with pytest.raises(BookingFailed):
+    with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
 
 def test_execute_booking_box_closed(execute_uc, mock_client):
     mock_client.get_classes.return_value = []
 
-    with pytest.raises(BookingFailed):
+    with pytest.raises(BookingFailed, match=MESSAGE_BOX_IS_CLOSED):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
 
