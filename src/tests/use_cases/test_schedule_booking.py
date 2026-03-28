@@ -4,21 +4,20 @@ from datetime import datetime
 
 from domain.exceptions import UserNotFound
 from domain.models import User, BookingGoal
-from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_config import IGymConfig
 from domain.ports.scheduler import IJobScheduler
-from domain.ports.user_repository import IUserRepository
 from application.use_cases.schedule_booking import ScheduleBookingUseCase
+from tests.fakes import InMemoryBookingRepository, InMemoryUserRepository
 
 
 @pytest.fixture
-def user_repo(mocker):
-    return mocker.Mock(spec=IUserRepository)
+def user_repo():
+    return InMemoryUserRepository(users=[User(id=123, email="a@b.com", password="pw")])
 
 
 @pytest.fixture
-def booking_repo(mocker):
-    return mocker.Mock(spec=IBookingRepository)
+def booking_repo():
+    return InMemoryBookingRepository()
 
 
 @pytest.fixture
@@ -37,9 +36,8 @@ def schedule_uc(user_repo, booking_repo, scheduler, gym_config):
 
 
 def test_schedule_booking_creates_job_and_persists_goal(
-    schedule_uc, user_repo, booking_repo, scheduler, gym_config
+    schedule_uc, booking_repo, scheduler, gym_config
 ):
-    user_repo.get_user.return_value = User(id=123, email="a@b.com", password="pw")
     gym_config.booking_trigger_time.return_value = datetime(2027, 3, 12, 18, 30)
 
     schedule_uc.execute(
@@ -54,33 +52,33 @@ def test_schedule_booking_creates_job_and_persists_goal(
         user_id=123,
         booking_goal=expected_goal,
     )
-    booking_repo.add_booking_goal.assert_called_once_with(123, expected_goal)
+    assert booking_repo.get_user_bookings(123) == [expected_goal]
 
 
 def test_schedule_booking_user_not_found(
-    schedule_uc, user_repo, booking_repo, scheduler
+    booking_repo, scheduler, gym_config
 ):
-    user_repo.get_user.return_value = None
+    empty_user_repo = InMemoryUserRepository()
+    uc = ScheduleBookingUseCase(empty_user_repo, booking_repo, scheduler, gym_config)
 
     with pytest.raises(UserNotFound):
-        schedule_uc.execute(
+        uc.execute(
             user_id=999,
             class_start=datetime(2027, 3, 15, 18, 30),
             class_name="WOD",
         )
 
     scheduler.schedule_job.assert_not_called()
-    booking_repo.add_booking_goal.assert_not_called()
+    assert booking_repo.get_user_bookings(999) == []
 
 
 def test_schedule_booking_uses_platform_trigger_time(
-    schedule_uc, user_repo, scheduler, gym_config
+    schedule_uc, scheduler, gym_config
 ):
-    user_repo.get_user.return_value = User(id=1, email="a@b.com", password="pw")
     gym_config.booking_trigger_time.return_value = datetime(2027, 6, 7, 10, 0)
 
     schedule_uc.execute(
-        user_id=1, class_start=datetime(2027, 6, 10, 10, 0), class_name="WOD"
+        user_id=123, class_start=datetime(2027, 6, 10, 10, 0), class_name="WOD"
     )
 
     scheduler.schedule_job.assert_called_once()
