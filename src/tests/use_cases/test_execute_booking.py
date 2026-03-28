@@ -11,16 +11,42 @@ from application.use_cases.execute_booking import ExecuteBookingUseCase
 
 
 @pytest.fixture
-def execute_booking(mocker):
-    user_repo = mocker.Mock(spec=IUserRepository)
-    booking_repo = mocker.Mock(spec=IBookingRepository)
-    factory = mocker.Mock(spec=IGymClientFactory)
-    user_notifier = mocker.Mock(spec=IUserNotifier)
-    group_notifier = mocker.Mock(spec=IGroupNotifier)
-    mock_client = mocker.Mock(spec=IGymClient)
-    factory.create.return_value = mock_client
-    uc = ExecuteBookingUseCase(user_repo, booking_repo, factory, user_notifier, group_notifier)
-    return uc, user_repo, booking_repo, factory, mock_client, user_notifier, group_notifier
+def user_repo(mocker):
+    return mocker.Mock(spec=IUserRepository)
+
+
+@pytest.fixture
+def booking_repo(mocker):
+    return mocker.Mock(spec=IBookingRepository)
+
+
+@pytest.fixture
+def mock_client(mocker):
+    return mocker.Mock(spec=IGymClient)
+
+
+@pytest.fixture
+def factory(mocker, mock_client):
+    f = mocker.Mock(spec=IGymClientFactory)
+    f.create.return_value = mock_client
+    return f
+
+
+@pytest.fixture
+def user_notifier(mocker):
+    return mocker.Mock(spec=IUserNotifier)
+
+
+@pytest.fixture
+def group_notifier(mocker):
+    return mocker.Mock(spec=IGroupNotifier)
+
+
+@pytest.fixture
+def execute_uc(user_repo, booking_repo, factory, user_notifier, group_notifier):
+    return ExecuteBookingUseCase(
+        user_repo, booking_repo, factory, user_notifier, group_notifier
+    )
 
 
 def _make_user(user_id=123, email="a@b.com", password="pw"):
@@ -31,16 +57,31 @@ def _make_goal():
     return BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
 
 
-def test_execute_booking_happy_path(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_happy_path(
+    execute_uc, user_repo, booking_repo, mock_client, user_notifier, group_notifier
+):
     goal = _make_goal()
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=5,
+            max_spots=20,
+        )
+    ]
 
-    uc.execute(123, goal)
+    execute_uc.execute(123, goal)
 
-    client.book_class.assert_called_once_with(GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20))
+    mock_client.book_class.assert_called_once_with(
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=5,
+            max_spots=20,
+        )
+    )
     booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
     user_notifier.notify_user.assert_called_once()
     args = user_notifier.notify_user.call_args.args
@@ -49,76 +90,119 @@ def test_execute_booking_happy_path(execute_booking):
     group_notifier.notify_group.assert_called_once()
 
 
-def test_execute_booking_matches_by_time_and_name(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_matches_by_time_and_name(
+    execute_uc, user_repo, mock_client
+):
     goal = _make_goal()
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = [
-        GymClass(name="OPEN", class_start=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10),
-        GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10),
-        GymClass(name="WOD", class_start=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10),
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="OPEN",
+            class_start=datetime(2027, 3, 15, 10, 0),
+            spots_available=1,
+            max_spots=10,
+        ),
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=1,
+            max_spots=10,
+        ),
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 10, 0),
+            spots_available=1,
+            max_spots=10,
+        ),
     ]
 
-    uc.execute(123, goal)
+    execute_uc.execute(123, goal)
 
-    client.book_class.assert_called_once_with(GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10))
+    mock_client.book_class.assert_called_once_with(
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=1,
+            max_spots=10,
+        )
+    )
 
 
-def test_execute_booking_user_not_found(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_user_not_found(execute_uc, user_repo, factory):
     goal = _make_goal()
 
     user_repo.get_user.return_value = None
 
     with pytest.raises(UserNotFound):
-        uc.execute(999, goal)
+        execute_uc.execute(999, goal)
 
     factory.create.assert_not_called()
 
 
-def test_execute_booking_no_matching_class_raises(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_no_matching_class_raises(execute_uc, user_repo, mock_client):
     goal = _make_goal()
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = [GymClass(name="OPEN", class_start=datetime(2027, 3, 15, 10, 0), spots_available=1, max_spots=10)]
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="OPEN",
+            class_start=datetime(2027, 3, 15, 10, 0),
+            spots_available=1,
+            max_spots=10,
+        )
+    ]
 
     with pytest.raises(BookingFailed):
-        uc.execute(123, goal)
+        execute_uc.execute(123, goal)
 
 
-def test_execute_booking_box_closed(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_box_closed(execute_uc, user_repo, mock_client):
     goal = _make_goal()
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = []
+    mock_client.get_classes.return_value = []
 
     with pytest.raises(BookingFailed):
-        uc.execute(123, goal)
+        execute_uc.execute(123, goal)
 
 
-def test_execute_booking_cleans_up_goal(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_cleans_up_goal(
+    execute_uc, user_repo, booking_repo, mock_client
+):
     goal = _make_goal()
 
     user_repo.get_user.return_value = _make_user()
-    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=5,
+            max_spots=20,
+        )
+    ]
 
-    uc.execute(123, goal)
+    execute_uc.execute(123, goal)
 
     booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
 
 
-def test_execute_booking_notifies_user_and_group(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_notifies_user_and_group(
+    execute_uc, user_repo, mock_client, user_notifier, group_notifier
+):
     goal = _make_goal()
 
     user_repo.get_user.return_value = _make_user(user_id=123)
-    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=5, max_spots=20)]
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=5,
+            max_spots=20,
+        )
+    ]
 
-    uc.execute(123, goal)
+    execute_uc.execute(123, goal)
 
     user_notifier.notify_user.assert_called_once()
     group_notifier.notify_group.assert_called_once()
@@ -126,26 +210,45 @@ def test_execute_booking_notifies_user_and_group(execute_booking):
     assert "WOD" in msg
 
 
-def test_execute_booking_uses_class_start_for_get_classes(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
-
+def test_execute_booking_uses_class_start_for_get_classes(
+    execute_uc, user_repo, mock_client
+):
     user_repo.get_user.return_value = _make_user()
     class_start = datetime(2027, 6, 10, 10, 0)
     goal = BookingGoal(class_start=class_start, class_name="WOD")
-    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 6, 10, 10, 0), spots_available=1, max_spots=10)]
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 6, 10, 10, 0),
+            spots_available=1,
+            max_spots=10,
+        )
+    ]
 
-    uc.execute(123, goal)
+    execute_uc.execute(123, goal)
 
-    client.get_classes.assert_called_once_with(class_start)
+    mock_client.get_classes.assert_called_once_with(class_start)
 
 
-def test_execute_booking_creates_client_with_user_credentials(execute_booking):
-    uc, user_repo, booking_repo, factory, client, user_notifier, group_notifier = execute_booking
+def test_execute_booking_creates_client_with_user_credentials(
+    execute_uc, user_repo, factory, mock_client
+):
     goal = _make_goal()
 
-    user_repo.get_user.return_value = _make_user(email="test@gym.com", password="secret123")
-    client.get_classes.return_value = [GymClass(name="WOD", class_start=datetime(2027, 3, 15, 18, 30), spots_available=1, max_spots=10)]
+    user_repo.get_user.return_value = _make_user(
+        email="test@gym.com", password="secret123"
+    )
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="WOD",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=1,
+            max_spots=10,
+        )
+    ]
 
-    uc.execute(123, goal)
+    execute_uc.execute(123, goal)
 
-    factory.create.assert_called_once_with(_make_user(email="test@gym.com", password="secret123"))
+    factory.create.assert_called_once_with(
+        _make_user(email="test@gym.com", password="secret123")
+    )
