@@ -77,9 +77,9 @@ class IAimHarderGym(IGymConfig):
 # infrastructure/aimharder/monkey_box_config.py
 class MonkeyBoxConfig(IAimHarderGym):
     def __init__(self) -> None:
-        self._box_id = int(os.environ["BOX_ID"])
-        self._box_name = os.environ["BOX_NAME"]
-        self._days_in_advance = int(os.environ["DAYS_IN_ADVANCE"])
+        self._box_id = int(os.environ["MONKEY_BOX_ID"])
+        self._box_name = os.environ["MONKEY_BOX_NAME"]
+        self._days_in_advance = int(os.environ["MONKEY_BOX_DAYS_IN_ADVANCE"])
 
     @property
     def box_id(self) -> int: return self._box_id
@@ -105,12 +105,12 @@ class AimHarderClientFactory(IGymClientFactory):
 
 #### Environment variables
 
-`box_data.py` is deleted. `BOX_ID`, `BOX_NAME`, and `DAYS_IN_ADVANCE` move to `.env`:
+`box_data.py` is deleted. `BOX_ID`, `BOX_NAME`, and `DAYS_IN_ADVANCE` move to `.env` and renamed to `MONKEY_BOX_ID`, `MONKEY_BOX_NAME` and `MONKEY_BOX_DAYS_IN_ADVANCE`:
 
 ```env
-BOX_ID=9824
-BOX_NAME=themonkeybox
-DAYS_IN_ADVANCE=3
+MONKEY_BOX_ID=9824
+MONKEY_BOX_NAME=themonkeybox
+MONKEY_BOX_DAYS_IN_ADVANCE=3
 ```
 
 ### Composition root (`main.py`)
