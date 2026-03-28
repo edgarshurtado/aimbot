@@ -7,7 +7,7 @@ from domain.exceptions import (
 from domain.models import BookingGoal
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClientFactory
-from domain.ports.notifier import IGroupNotifier, IUserNotifier
+from domain.ports.notifier import IUserNotifier
 from domain.ports.user_repository import IUserRepository
 
 
@@ -18,13 +18,11 @@ class ExecuteBookingUseCase:
         booking_repo: IBookingRepository,
         gym_client_factory: IGymClientFactory,
         user_notifier: IUserNotifier,
-        group_notifier: IGroupNotifier,
     ) -> None:
         self._user_repo = user_repo
         self._booking_repo = booking_repo
         self._gym_client_factory = gym_client_factory
         self._user_notifier = user_notifier
-        self._group_notifier = group_notifier
 
     def execute(self, user_id: int, booking_goal: BookingGoal) -> None:
         user = self._user_repo.get_user(user_id)
@@ -62,4 +60,3 @@ class ExecuteBookingUseCase:
             f"{booking_goal.class_start.strftime('%H:%M')}"
         )
         self._user_notifier.notify_user(user_id, msg)
-        self._group_notifier.notify_group(msg)

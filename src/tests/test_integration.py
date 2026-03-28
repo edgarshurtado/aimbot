@@ -147,7 +147,7 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
     from application.use_cases.execute_booking import ExecuteBookingUseCase
     from domain.models import GymClass
     from domain.ports.gym_client import IGymClientFactory
-    from domain.ports.notifier import IUserNotifier, IGroupNotifier
+    from domain.ports.notifier import IUserNotifier
 
     json_repo = JsonRepository(schedule_file_with_goal)
 
@@ -158,10 +158,9 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
     mock_factory = MagicMock(spec=IGymClientFactory)
     mock_factory.create.return_value = mock_client
     mock_user_notifier = MagicMock(spec=IUserNotifier)
-    mock_group_notifier = MagicMock(spec=IGroupNotifier)
 
     execute_uc = ExecuteBookingUseCase(
-        json_repo, json_repo, mock_factory, mock_user_notifier, mock_group_notifier
+        json_repo, json_repo, mock_factory, mock_user_notifier
     )
 
     class_start = datetime(2027, 6, 15, 10, 0)
@@ -175,9 +174,8 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
     user = json_repo.get_user(66666666)
     assert len(user.booking_goals) == 0
 
-    # Notifiers were invoked
+    # User was notified
     mock_user_notifier.notify_user.assert_called_once()
-    mock_group_notifier.notify_group.assert_called_once()
 
 
 # ── Test 5: APScheduler fires execute handler ─────────────────────────────────

@@ -5,7 +5,7 @@ from domain.exceptions import BookingFailed, UserNotFound
 from domain.models import BookingGoal, GymClass, User
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClient, IGymClientFactory
-from domain.ports.notifier import IGroupNotifier, IUserNotifier
+from domain.ports.notifier import IUserNotifier
 from domain.ports.user_repository import IUserRepository
 from application.use_cases.execute_booking import ExecuteBookingUseCase
 
@@ -38,15 +38,8 @@ def user_notifier(mocker):
 
 
 @pytest.fixture
-def group_notifier(mocker):
-    return mocker.Mock(spec=IGroupNotifier)
-
-
-@pytest.fixture
-def execute_uc(user_repo, booking_repo, factory, user_notifier, group_notifier):
-    return ExecuteBookingUseCase(
-        user_repo, booking_repo, factory, user_notifier, group_notifier
-    )
+def execute_uc(user_repo, booking_repo, factory, user_notifier):
+    return ExecuteBookingUseCase(user_repo, booking_repo, factory, user_notifier)
 
 
 def _make_user(user_id=123, email="a@b.com", password="pw"):
@@ -58,7 +51,7 @@ def _make_goal():
 
 
 def test_execute_booking_happy_path(
-    execute_uc, user_repo, booking_repo, mock_client, user_notifier, group_notifier
+    execute_uc, user_repo, booking_repo, mock_client, user_notifier
 ):
     goal = _make_goal()
 
@@ -85,7 +78,6 @@ def test_execute_booking_happy_path(
     booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
     expected_msg = "class booked for a@b.com: WOD 18:30"
     user_notifier.notify_user.assert_called_once_with(123, expected_msg)
-    group_notifier.notify_group.assert_called_once_with(expected_msg)
 
 
 def test_execute_booking_matches_by_time_and_name(
@@ -185,8 +177,8 @@ def test_execute_booking_cleans_up_goal(
     booking_repo.remove_booking_goal.assert_called_once_with(123, goal)
 
 
-def test_execute_booking_notifies_user_and_group(
-    execute_uc, user_repo, mock_client, user_notifier, group_notifier
+def test_execute_booking_notifies_user(
+    execute_uc, user_repo, mock_client, user_notifier
 ):
     goal = _make_goal()
 
@@ -204,7 +196,6 @@ def test_execute_booking_notifies_user_and_group(
 
     expected_msg = "class booked for a@b.com: WOD 18:30"
     user_notifier.notify_user.assert_called_once_with(123, expected_msg)
-    group_notifier.notify_group.assert_called_once_with(expected_msg)
 
 
 def test_execute_booking_uses_class_start_for_get_classes(

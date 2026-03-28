@@ -23,7 +23,7 @@ def mocked_bootstrap(mocker):
     mock_factory_cls = mocker.patch("main.AimHarderClientFactory")
     mock_bot_cls = mocker.patch("main.TelegramBot")
     mocker.patch("main.TelegramUserNotifier")
-    mocker.patch("main.TelegramGroupNotifier")
+
     mock_execute_uc_cls = mocker.patch("main.ExecuteBookingUseCase")
     mock_apscheduler_cls = mocker.patch("main.APSchedulerAdapter")
     mock_schedule_uc_cls = mocker.patch("main.ScheduleBookingUseCase")
@@ -61,7 +61,7 @@ def test_startup_recovery_no_users(mocker):
     mocker.patch("main.AimHarderClientFactory")
     mocker.patch("main.TelegramBot")
     mocker.patch("main.TelegramUserNotifier")
-    mocker.patch("main.TelegramGroupNotifier")
+
     mocker.patch("main.ExecuteBookingUseCase")
     mocker.patch("main.APSchedulerAdapter")
     mock_schedule_uc_cls = mocker.patch("main.ScheduleBookingUseCase")
@@ -81,7 +81,7 @@ def test_startup_recovery_reschedules_all_user_goals(mocker):
     mocker.patch("main.AimHarderClientFactory")
     mocker.patch("main.TelegramBot")
     mocker.patch("main.TelegramUserNotifier")
-    mocker.patch("main.TelegramGroupNotifier")
+
     mocker.patch("main.ExecuteBookingUseCase")
     mocker.patch("main.APSchedulerAdapter")
     mock_schedule_uc_cls = mocker.patch("main.ScheduleBookingUseCase")
@@ -117,7 +117,7 @@ def test_startup_recovery_multiple_users(mocker):
     mocker.patch("main.AimHarderClientFactory")
     mocker.patch("main.TelegramBot")
     mocker.patch("main.TelegramUserNotifier")
-    mocker.patch("main.TelegramGroupNotifier")
+
     mocker.patch("main.ExecuteBookingUseCase")
     mocker.patch("main.APSchedulerAdapter")
     mock_schedule_uc_cls = mocker.patch("main.ScheduleBookingUseCase")
@@ -156,7 +156,7 @@ def test_apscheduler_start_called(mocker):
     mocker.patch("main.AimHarderClientFactory")
     mocker.patch("main.TelegramBot")
     mocker.patch("main.TelegramUserNotifier")
-    mocker.patch("main.TelegramGroupNotifier")
+
     mocker.patch("main.ExecuteBookingUseCase")
     mock_apscheduler_cls = mocker.patch("main.APSchedulerAdapter")
     mocker.patch("main.ScheduleBookingUseCase")
@@ -174,7 +174,7 @@ def test_execute_uc_wired_as_job_handler(mocker):
     mocker.patch("main.AimHarderClientFactory")
     mocker.patch("main.TelegramBot")
     mocker.patch("main.TelegramUserNotifier")
-    mocker.patch("main.TelegramGroupNotifier")
+
     mock_execute_uc_cls = mocker.patch("main.ExecuteBookingUseCase")
     mock_apscheduler_cls = mocker.patch("main.APSchedulerAdapter")
     mocker.patch("main.ScheduleBookingUseCase")
