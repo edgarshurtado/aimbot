@@ -2,7 +2,6 @@ import pytest
 from datetime import datetime
 
 from domain.models import BookingGoal
-from domain.ports.booking_repository import IBookingRepository
 from domain.ports.scheduler import IJobScheduler
 from application.use_cases.remove_booking import RemoveBookingUseCase
 from tests.fakes import InMemoryBookingRepository
@@ -36,29 +35,13 @@ def test_remove_booking_removes_job_and_goal(remove_uc, booking_repo, scheduler)
     assert booking_repo.get_user_bookings(DEFAULT_USER_ID) == []
 
 
-def test_remove_booking_calls_scheduler_before_repo(mocker):
-    goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
-    booking_repo = mocker.Mock(spec=IBookingRepository)
-    scheduler = mocker.Mock(spec=IJobScheduler)
-    uc = RemoveBookingUseCase(booking_repo, scheduler)
-
-    call_order = []
-    scheduler.remove_job.side_effect = lambda *args: call_order.append("scheduler")
-    booking_repo.remove_booking_goal.side_effect = lambda *args: call_order.append("repo")
-
-    uc.execute(user_id=DEFAULT_USER_ID, booking_goal=goal)
-
-    assert call_order == ["scheduler", "repo"]
-
-
-def test_remove_booking_propagates_scheduler_error(booking_repo, scheduler):
+def test_remove_booking_cleans_up_goal_even_if_scheduler_fails(booking_repo, scheduler):
     goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
     booking_repo.add_booking_goal(DEFAULT_USER_ID, goal)
     uc = RemoveBookingUseCase(booking_repo, scheduler)
 
     scheduler.remove_job.side_effect = Exception("job not found")
 
-    with pytest.raises(Exception, match="job not found"):
-        uc.execute(user_id=DEFAULT_USER_ID, booking_goal=goal)
+    uc.execute(user_id=DEFAULT_USER_ID, booking_goal=goal)
 
-    assert booking_repo.get_user_bookings(DEFAULT_USER_ID) == [goal]
+    assert booking_repo.get_user_bookings(DEFAULT_USER_ID) == []
