@@ -10,9 +10,12 @@ from application.use_cases.schedule_booking import ScheduleBookingUseCase
 from tests.fakes import InMemoryBookingRepository, InMemoryUserRepository
 
 
+DEFAULT_USER = User(id=123, email="a@b.com", password="pw")
+
+
 @pytest.fixture
 def user_repo():
-    return InMemoryUserRepository(users=[User(id=123, email="a@b.com", password="pw")])
+    return InMemoryUserRepository(users=[DEFAULT_USER])
 
 
 @pytest.fixture
@@ -41,7 +44,7 @@ def test_schedule_booking_creates_job_and_persists_goal(
     gym_config.booking_trigger_time.return_value = datetime(2027, 3, 12, 18, 30)
 
     schedule_uc.execute(
-        user_id=123, class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD"
+        user_id=DEFAULT_USER.id, class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD"
     )
 
     expected_goal = BookingGoal(
@@ -49,10 +52,10 @@ def test_schedule_booking_creates_job_and_persists_goal(
     )
     scheduler.schedule_job.assert_called_once_with(
         run_at=datetime(2027, 3, 12, 18, 30),
-        user_id=123,
+        user_id=DEFAULT_USER.id,
         booking_goal=expected_goal,
     )
-    assert booking_repo.get_user_bookings(123) == [expected_goal]
+    assert booking_repo.get_user_bookings(DEFAULT_USER.id) == [expected_goal]
 
 
 def test_schedule_booking_user_not_found(
@@ -78,7 +81,7 @@ def test_schedule_booking_uses_platform_trigger_time(
     gym_config.booking_trigger_time.return_value = datetime(2027, 6, 7, 10, 0)
 
     schedule_uc.execute(
-        user_id=123, class_start=datetime(2027, 6, 10, 10, 0), class_name="WOD"
+        user_id=DEFAULT_USER.id, class_start=datetime(2027, 6, 10, 10, 0), class_name="WOD"
     )
 
     scheduler.schedule_job.assert_called_once()

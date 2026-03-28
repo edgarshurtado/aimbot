@@ -9,9 +9,13 @@ from application.use_cases.execute_booking import ExecuteBookingUseCase
 from tests.fakes import InMemoryBookingRepository, InMemoryUserRepository
 
 
+DEFAULT_USER = User(id=123, email="a@b.com", password="pw")
+DEFAULT_GOAL = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+
+
 @pytest.fixture
 def user_repo():
-    return InMemoryUserRepository(users=[_make_user()])
+    return InMemoryUserRepository(users=[DEFAULT_USER])
 
 
 @pytest.fixture
@@ -41,19 +45,10 @@ def execute_uc(user_repo, booking_repo, factory, user_notifier):
     return ExecuteBookingUseCase(user_repo, booking_repo, factory, user_notifier)
 
 
-def _make_user(user_id=123, email="a@b.com", password="pw"):
-    return User(id=user_id, email=email, password=password)
-
-
-def _make_goal():
-    return BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
-
-
 def test_execute_booking_happy_path(
     execute_uc, booking_repo, mock_client, user_notifier
 ):
-    goal = _make_goal()
-    booking_repo.add_booking_goal(123, goal)
+    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
 
     mock_client.get_classes.return_value = [
         GymClass(
@@ -64,7 +59,7 @@ def test_execute_booking_happy_path(
         )
     ]
 
-    execute_uc.execute(user_id=123, booking_goal=goal)
+    execute_uc.execute(user_id=DEFAULT_USER.id, booking_goal=DEFAULT_GOAL)
 
     mock_client.book_class.assert_called_once_with(
         GymClass(
@@ -74,16 +69,15 @@ def test_execute_booking_happy_path(
             max_spots=20,
         )
     )
-    assert booking_repo.get_user_bookings(123) == []
-    expected_msg = "class booked for a@b.com: WOD 18:30"
-    user_notifier.notify_user.assert_called_once_with(123, expected_msg)
+    assert booking_repo.get_user_bookings(DEFAULT_USER.id) == []
+    expected_msg = f"class booked for {DEFAULT_USER.email}: WOD 18:30"
+    user_notifier.notify_user.assert_called_once_with(DEFAULT_USER.id, expected_msg)
 
 
 def test_execute_booking_matches_by_time_and_name(
     execute_uc, booking_repo, mock_client
 ):
-    goal = _make_goal()
-    booking_repo.add_booking_goal(123, goal)
+    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
 
     mock_client.get_classes.return_value = [
         GymClass(
@@ -106,7 +100,7 @@ def test_execute_booking_matches_by_time_and_name(
         ),
     ]
 
-    execute_uc.execute(123, goal)
+    execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
     mock_client.book_class.assert_called_once_with(
         GymClass(
@@ -121,17 +115,14 @@ def test_execute_booking_matches_by_time_and_name(
 def test_execute_booking_user_not_found(
     booking_repo, factory, user_notifier
 ):
-    goal = _make_goal()
     empty_user_repo = InMemoryUserRepository()
     uc = ExecuteBookingUseCase(empty_user_repo, booking_repo, factory, user_notifier)
 
     with pytest.raises(UserNotFound):
-        uc.execute(999, goal)
+        uc.execute(999, DEFAULT_GOAL)
 
 
 def test_execute_booking_no_matching_class_raises(execute_uc, mock_client):
-    goal = _make_goal()
-
     mock_client.get_classes.return_value = [
         GymClass(
             name="OPEN",
@@ -142,23 +133,20 @@ def test_execute_booking_no_matching_class_raises(execute_uc, mock_client):
     ]
 
     with pytest.raises(BookingFailed):
-        execute_uc.execute(123, goal)
+        execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
 
 def test_execute_booking_box_closed(execute_uc, mock_client):
-    goal = _make_goal()
-
     mock_client.get_classes.return_value = []
 
     with pytest.raises(BookingFailed):
-        execute_uc.execute(123, goal)
+        execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
 
 def test_execute_booking_cleans_up_goal(
     execute_uc, booking_repo, mock_client
 ):
-    goal = _make_goal()
-    booking_repo.add_booking_goal(123, goal)
+    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
 
     mock_client.get_classes.return_value = [
         GymClass(
@@ -169,16 +157,15 @@ def test_execute_booking_cleans_up_goal(
         )
     ]
 
-    execute_uc.execute(123, goal)
+    execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
-    assert booking_repo.get_user_bookings(123) == []
+    assert booking_repo.get_user_bookings(DEFAULT_USER.id) == []
 
 
 def test_execute_booking_notifies_user(
     execute_uc, booking_repo, mock_client, user_notifier
 ):
-    goal = _make_goal()
-    booking_repo.add_booking_goal(123, goal)
+    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
 
     mock_client.get_classes.return_value = [
         GymClass(
@@ -189,10 +176,10 @@ def test_execute_booking_notifies_user(
         )
     ]
 
-    execute_uc.execute(123, goal)
+    execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
-    expected_msg = "class booked for a@b.com: WOD 18:30"
-    user_notifier.notify_user.assert_called_once_with(123, expected_msg)
+    expected_msg = f"class booked for {DEFAULT_USER.email}: WOD 18:30"
+    user_notifier.notify_user.assert_called_once_with(DEFAULT_USER.id, expected_msg)
 
 
 def test_execute_booking_uses_class_start_for_get_classes(
@@ -200,7 +187,7 @@ def test_execute_booking_uses_class_start_for_get_classes(
 ):
     class_start = datetime(2027, 6, 10, 10, 0)
     goal = BookingGoal(class_start=class_start, class_name="WOD")
-    booking_repo.add_booking_goal(123, goal)
+    booking_repo.add_booking_goal(DEFAULT_USER.id, goal)
 
     mock_client.get_classes.return_value = [
         GymClass(
@@ -211,7 +198,7 @@ def test_execute_booking_uses_class_start_for_get_classes(
         )
     ]
 
-    execute_uc.execute(123, goal)
+    execute_uc.execute(DEFAULT_USER.id, goal)
 
     mock_client.get_classes.assert_called_once_with(class_start)
 
@@ -219,12 +206,11 @@ def test_execute_booking_uses_class_start_for_get_classes(
 def test_execute_booking_creates_client_with_user_credentials(
     booking_repo, factory, mock_client, user_notifier
 ):
-    user = _make_user(email="test@gym.com", password="secret123")
+    user = User(id=123, email="test@gym.com", password="secret123")
     user_repo = InMemoryUserRepository(users=[user])
     uc = ExecuteBookingUseCase(user_repo, booking_repo, factory, user_notifier)
 
-    goal = _make_goal()
-    booking_repo.add_booking_goal(123, goal)
+    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
     mock_client.get_classes.return_value = [
         GymClass(
             name="WOD",
@@ -234,8 +220,8 @@ def test_execute_booking_creates_client_with_user_credentials(
         )
     ]
 
-    uc.execute(123, goal)
+    uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
     factory.create.assert_called_once_with(
-        _make_user(email="test@gym.com", password="secret123")
+        User(id=123, email="test@gym.com", password="secret123")
     )
