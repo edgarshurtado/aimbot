@@ -43,8 +43,8 @@ def test_remove_booking_calls_scheduler_before_repo(mocker):
     uc = RemoveBookingUseCase(booking_repo, scheduler)
 
     call_order = []
-    scheduler.remove_job.side_effect = lambda *a: call_order.append("scheduler")
-    booking_repo.remove_booking_goal.side_effect = lambda *a: call_order.append("repo")
+    scheduler.remove_job.side_effect = lambda *args: call_order.append("scheduler")
+    booking_repo.remove_booking_goal.side_effect = lambda *args: call_order.append("repo")
 
     uc.execute(user_id=DEFAULT_USER_ID, booking_goal=goal)
 
