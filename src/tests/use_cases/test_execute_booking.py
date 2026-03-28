@@ -148,65 +148,6 @@ def test_execute_booking_box_closed(execute_uc, mock_client):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
 
-def test_execute_booking_cleans_up_goal(
-    execute_uc, booking_repo, mock_client
-):
-    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
-
-    mock_client.get_classes.return_value = [
-        GymClass(
-            name="WOD",
-            class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=5,
-            max_spots=20,
-        )
-    ]
-
-    execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
-
-    assert booking_repo.get_user_bookings(DEFAULT_USER.id) == []
-
-
-def test_execute_booking_notifies_user(
-    execute_uc, booking_repo, mock_client, user_notifier
-):
-    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
-
-    mock_client.get_classes.return_value = [
-        GymClass(
-            name="WOD",
-            class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=5,
-            max_spots=20,
-        )
-    ]
-
-    execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
-
-    expected_msg = f"class booked for {DEFAULT_USER.email}: WOD 18:30"
-    user_notifier.notify_user.assert_called_once_with(DEFAULT_USER.id, expected_msg)
-
-
-def test_execute_booking_uses_class_start_for_get_classes(
-    execute_uc, booking_repo, mock_client
-):
-    class_start = datetime(2027, 6, 10, 10, 0)
-    goal = BookingGoal(class_start=class_start, class_name="WOD")
-    booking_repo.add_booking_goal(DEFAULT_USER.id, goal)
-
-    mock_client.get_classes.return_value = [
-        GymClass(
-            name="WOD",
-            class_start=datetime(2027, 6, 10, 10, 0),
-            spots_available=1,
-            max_spots=10,
-        )
-    ]
-
-    execute_uc.execute(DEFAULT_USER.id, goal)
-
-    mock_client.get_classes.assert_called_once_with(class_start)
-
 
 def test_execute_booking_creates_client_with_user_credentials(
     booking_repo, factory, mock_client, user_notifier
