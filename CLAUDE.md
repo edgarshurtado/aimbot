@@ -28,21 +28,60 @@ PYTHONPATH must be set to `src` when running any Python code.
 
 ## Architecture
 
-Three concurrent systems run from `src/main.py`:
+Clean / hexagonal architecture: the domain layer defines models and port interfaces; application use cases orchestrate the ports; infrastructure adapters implement the ports against real services. `src/main.py` is the composition root — it wires adapters into use cases and starts the Telegram bot.
 
-1. **APScheduler BackgroundScheduler** — cron jobs for recurring weekly bookings
-2. **BookingScheduler** (`booking_scheduler.py`) — one-time bookings via date triggers
-3. **Telegram Bot** (`telegram_logger.py`) — user interface in polling mode using ConversationHandler for multi-step booking flows
+```
+src/
+├── main.py                              # composition root (bootstrap)
+├── constants.py                         # aimharder URL/endpoint constants
+├── schedule.json                        # JSON-backed user + booking-goal store
+├── domain/                              # pure: no I/O, no framework imports
+│   ├── models.py                        # User, BookingGoal, GymClass dataclasses
+│   ├── exceptions.py                    # BookingFailed, AuthenticationFailed, UserNotFound
+│   └── ports/                           # abstract interfaces (ABCs)
+│       ├── user_repository.py           # IUserRepository
+│       ├── booking_repository.py        # IBookingRepository
+│       ├── gym_client.py                # IGymClient, IGymClientFactory
+│       ├── gym_config.py                # IGymConfig (booking trigger time policy)
+│       ├── scheduler.py                 # IJobScheduler
+│       └── notifier.py                  # IUserNotifier, IGroupNotifier
+├── application/
+│   └── use_cases/
+│       ├── schedule_booking.py          # ScheduleBookingUseCase
+│       ├── execute_booking.py           # ExecuteBookingUseCase (fires at trigger time)
+│       └── remove_booking.py            # RemoveBookingUseCase
+├── infrastructure/                      # adapters; only this layer touches I/O
+│   ├── aimharder/
+│   │   ├── client.py                    # AimHarderClient (login, list, book)
+│   │   ├── client_factory.py            # AimHarderClientFactory
+│   │   ├── gym_config.py                # IAimHarderGym (box_id/box_name/days_in_advance)
+│   │   ├── monkey_box_config.py         # env-backed gym config
+│   │   ├── raw_booking.py               # API DTO → GymClass mapping
+│   │   └── exceptions.py                # platform-specific error keys
+│   ├── persistence/
+│   │   └── json_repository.py           # JsonRepository implements both repo ports
+│   ├── scheduling/
+│   │   └── apscheduler.py               # APSchedulerAdapter (BackgroundScheduler + DateTrigger)
+│   └── telegram/
+│       ├── bot.py                       # TelegramBot (ConversationHandler for /add, /schedule, /remove)
+│       ├── user_notifier.py             # TelegramUserNotifier
+│       └── group_notifier.py            # TelegramGroupNotifier + token loader
+└── tests/
+    ├── conftest.py
+    ├── fakes.py                         # in-memory test doubles for ports
+    ├── use_cases/                       # use-case tests (in-memory ports)
+    ├── test_*.py                        # adapter tests (mocked I/O)
+    └── test_integration.py              # cross-layer integration
+```
 
-Key modules:
-- `client.py` — HTTP client for aimharder.com (login, list classes, book)
-- `repository.py` — JSON file persistence (`schedule.json`) for users and booking goals
-- `models.py` — `User` and `BookingGoal` dataclasses
-- `error_handling.py` — generic `Result` class (Result pattern instead of exceptions for expected failures)
-- `exceptions.py` — domain exceptions (login failures, booking errors)
-- `box_data.py` — gym-specific config (box_id, box_name, days_in_advance)
+Dependency rule: `domain` depends on nothing; `application` imports only `domain`; `infrastructure` and `main.py` depend on both. Adapters implement port interfaces and are injected by `main.bootstrap()`.
 
-Data flow for one-time bookings: Telegram command → ConversationHandler collects day/time/class → BookingScheduler creates job → Repository persists goal → job fires at (target_date - days_in_advance) → client books → Telegram notification.
+Data flow for a one-time booking:
+1. Telegram `/add` → `ConversationHandler` collects day/time/class.
+2. `ScheduleBookingUseCase` computes the trigger time via `IGymConfig.booking_trigger_time(class_start)`, registers a job with `IJobScheduler`, and persists a `BookingGoal` via `IBookingRepository`.
+3. At trigger time, APScheduler invokes `ExecuteBookingUseCase` with `(user_id, booking_goal)`.
+4. The use case builds an `IGymClient` for the user via `IGymClientFactory`, lists classes, books the matching one, removes the goal, and pushes a confirmation through `IUserNotifier`.
+5. On startup, `bootstrap()` re-schedules every persisted goal to recover from restarts.
 
 ## Testing
 
