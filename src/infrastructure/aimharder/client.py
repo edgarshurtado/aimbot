@@ -19,6 +19,7 @@ from domain.exceptions import (
     MESSAGE_BOOKING_FAILED_UNKNOWN,
     MESSAGE_LOGIN_NOT_AUTHENTICATED,
     MESSAGE_LOGIN_REJECTED,
+    MESSAGE_SESSION_EXPIRED,
 )
 from domain.models import GymClass
 from domain.ports.gym_client import IGymClient
@@ -31,6 +32,18 @@ def _generate_fingerprint() -> str:
     """A per-login device identifier the platform expects alongside the credentials."""
     alphabet = string.ascii_lowercase + string.digits
     return "".join(random.choices(alphabet, k=FINGERPRINT_LENGTH))
+
+
+def _raise_if_logged_out(data: dict) -> None:
+    """Reject aimharder's logout sentinel.
+
+    A request made without a valid session is answered with HTTP 200 and
+    ``{"logout": 1}`` rather than an error status or an error message. It carries
+    none of the keys the booking parser inspects, so left unchecked it reads as a
+    successful booking.
+    """
+    if isinstance(data, dict) and data.get("logout"):
+        raise AuthenticationFailed(MESSAGE_SESSION_EXPIRED)
 
 
 def _platform_error(response) -> str:
@@ -98,7 +111,9 @@ class AimHarderClient(IGymClient):
             classes_endpoint(self._box_name),
             params={"box": self._box_id, "day": target_day.strftime("%Y%m%d")},
         )
-        bookings = response.json().get("bookings") or []
+        data = response.json()
+        _raise_if_logged_out(data)
+        bookings = data.get("bookings") or []
         gym_classes = []
         for b in bookings:
             raw = RawBooking.from_dict(b)
@@ -119,6 +134,7 @@ class AimHarderClient(IGymClient):
         )
         if response.status_code == HTTPStatus.OK:
             data = response.json()
+            _raise_if_logged_out(data)
             if "bookState" in data and data["bookState"] == -2:
                 raise BookingFailed(MESSAGE_BOOKING_FAILED_NO_CREDIT)
             if "errorMssg" not in data and "errorMssgLang" not in data:

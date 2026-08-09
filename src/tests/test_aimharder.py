@@ -330,6 +330,46 @@ def test_book_class_server_error(http_mock):
         client.book_class(gym_class)
 
 
+# ── Logout sentinel ───────────────────────────────────────────────────────────
+
+
+def test_book_class_rejects_logout_sentinel(http_mock):
+    """Regression guard for the silent-booking bug.
+
+    aimharder answers a booking attempt from an unauthenticated session with
+    HTTP 200 and {"logout": 1}. That body carries none of the error keys the
+    client looked for, so it was read as a successful booking and the member was
+    told their class was booked when nothing had been reserved.
+    """
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
+    gym_class = GymClass(
+        name="WOD",
+        class_start=datetime(2027, 3, 2, 11, 0),
+        spots_available=5,
+        max_spots=20,
+    )
+    client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
+
+    http_mock.add(
+        rsps_lib.POST, book_endpoint(BOX_NAME), json={"logout": 1}, status=200
+    )
+
+    with pytest.raises(AuthenticationFailed):
+        client.book_class(gym_class)
+
+
+def test_get_classes_rejects_logout_sentinel(http_mock):
+    """Same sentinel one layer earlier — must not read as 'the box is closed'."""
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
+
+    http_mock.add(rsps_lib.GET, classes_endpoint(BOX_NAME), json={"logout": 1})
+
+    with pytest.raises(AuthenticationFailed):
+        client.get_classes(datetime(2027, 3, 15))
+
+
 # ── Adversarial edge cases ────────────────────────────────────────────────────
 
 
