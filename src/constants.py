@@ -5,10 +5,6 @@ LOGIN_ENDPOINT = "https://login.aimharder.com/api/login"
 AUTH_COOKIE_NAME = "amhrdrauth"
 AUTH_COOKIE_DOMAIN = "aimharder.com"
 
-# Only referenced by the pre-refactor src/client.py, which nothing imports any more.
-# Kept so that dead module still resolves; delete along with it.
-ERROR_TAG_ID = "loginErrors"
-
 days_of_week_index = {
     "MONDAY": 0,
     "TUESDAY": 1,
