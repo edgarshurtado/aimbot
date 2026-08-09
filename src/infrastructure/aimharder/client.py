@@ -1,23 +1,52 @@
+import random
+import string
 from datetime import datetime
 from http import HTTPStatus
 
-from bs4 import BeautifulSoup
 from requests import Session
 
-from constants import LOGIN_ENDPOINT, ERROR_TAG_ID, book_endpoint, classes_endpoint
+from constants import (
+    AUTH_COOKIE_DOMAIN,
+    AUTH_COOKIE_NAME,
+    LOGIN_ENDPOINT,
+    book_endpoint,
+    classes_endpoint,
+)
 from domain.exceptions import (
-    AuthenticationFailed,
     BookingFailed,
     MESSAGE_BOOKING_FAILED_NO_CREDIT,
     MESSAGE_BOOKING_FAILED_UNKNOWN,
 )
 from domain.models import GymClass
 from domain.ports.gym_client import IGymClient
-from infrastructure.aimharder.exceptions import (
-    IncorrectCredentials,
-    TooManyWrongAttempts,
-)
 from infrastructure.aimharder.raw_booking import RawBooking
+
+FINGERPRINT_LENGTH = 50
+
+
+def _generate_fingerprint() -> str:
+    """A per-login device identifier the platform expects alongside the credentials."""
+    alphabet = string.ascii_lowercase + string.digits
+    return "".join(random.choices(alphabet, k=FINGERPRINT_LENGTH))
+
+
+def _rescope_auth_cookie(session: Session) -> None:
+    """Pin the auth cookie to the parent domain.
+
+    Login is served from login.aimharder.com while classes and bookings live on
+    <box>.aimharder.com. A cookie returned without a domain attribute is host-only
+    and would never reach the gym subdomain, so it is re-issued against the parent
+    domain. Existing entries are cleared first: the jar normalises an explicit
+    ``domain=aimharder.com`` to ``.aimharder.com``, which would otherwise leave two
+    cookies of the same name and make later reads ambiguous.
+    """
+    existing = [c for c in session.cookies if c.name == AUTH_COOKIE_NAME]
+    if not existing:
+        return
+    token = existing[0].value
+    for cookie in existing:
+        session.cookies.clear(cookie.domain, cookie.path, cookie.name)
+    session.cookies.set(AUTH_COOKIE_NAME, token, domain=AUTH_COOKIE_DOMAIN, path="/")
 
 
 class AimHarderClient(IGymClient):
@@ -32,16 +61,15 @@ class AimHarderClient(IGymClient):
         session = Session()
         response = session.post(
             LOGIN_ENDPOINT,
-            data={"login": "Log in", "mail": email, "pw": password},
+            json={
+                "username": email,
+                "password": password,
+                "fingerprint": _generate_fingerprint(),
+            },
         )
         response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser").find(id=ERROR_TAG_ID)
-        if soup is not None and soup.text:
-            if IncorrectCredentials.key_phrase in soup.text:
-                raise AuthenticationFailed(soup.text)
-            if TooManyWrongAttempts.key_phrase in soup.text:
-                raise AuthenticationFailed(soup.text)
-            raise AuthenticationFailed(soup.text)
+
+        _rescope_auth_cookie(session)
         return session
 
     def get_classes(self, target_day: datetime) -> list[GymClass]:
@@ -62,7 +90,11 @@ class AimHarderClient(IGymClient):
         class_id = self._id_map[(gym_class.name, gym_class.class_start)]
         response = self._session.post(
             book_endpoint(self._box_name),
-            data={"id": class_id, "day": gym_class.class_start.strftime("%Y%m%d"), "insist": 0},
+            data={
+                "id": class_id,
+                "day": gym_class.class_start.strftime("%Y%m%d"),
+                "insist": 0,
+            },
         )
         if response.status_code == HTTPStatus.OK:
             data = response.json()
