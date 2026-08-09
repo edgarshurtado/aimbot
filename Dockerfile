@@ -1,9 +1,9 @@
-FROM python:latest
+FROM python:3.13-trixie
 
 WORKDIR /usr/src/app
 
 COPY src /usr/src/app/src
-COPY Makefile requirements.txt requirements-tests.txt setup.cfg /usr/src/app/
+COPY Makefile requirements.txt requirements-tests.txt setup.cfg .env /usr/src/app/
 
 RUN make venv
 
