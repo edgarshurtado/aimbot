@@ -1,6 +1,6 @@
 """Throwaway diagnostic entrypoint for tracing a single booking attempt.
 
-Not part of the application. Lives on the `debug/booking-trace` branch only.
+Not part of the application, and not intended for master.
 
 It drives the real AimHarderClient (so every HTTP request is genuine production
 code) but skips the scheduler, the repositories' write paths and Telegram, so
@@ -22,8 +22,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from constants import LOGIN_ENDPOINT  # noqa: E402
-from domain.exceptions import BookingFailed  # noqa: E402
+from constants import AUTH_COOKIE_NAME, LOGIN_ENDPOINT  # noqa: E402
+from domain.exceptions import AuthenticationFailed, BookingFailed  # noqa: E402
 from domain.models import User  # noqa: E402
 from infrastructure.aimharder.client_factory import AimHarderClientFactory  # noqa: E402
 from infrastructure.aimharder.gym_config import IAimHarderGym  # noqa: E402
@@ -34,10 +34,9 @@ STDOUT_BODY_LIMIT = 300
 REDACTED_KEYS = {"pw", "password", "pass", "token", "apikey"}
 MASKED_KEYS = {"mail", "email"}
 
-# Heuristic markers for a genuinely authenticated session. AimHarderClient._login
-# only detects *failure* (a #loginErrors tag), so a session that silently failed
-# to authenticate passes through it unnoticed.
-LOGGED_IN_MARKERS = ("logout", "cerrar sesion", "cerrar sesión", "logoutbtn")
+# Authentication is proven by the session cookie, nothing else. The platform serves
+# unauthenticated sessions ordinary-looking 200s and answers the class listing with
+# real data, so no amount of reading response bodies can establish that login worked.
 
 
 # ── trace output ─────────────────────────────────────────────────────────────
@@ -283,20 +282,29 @@ def stage_login(trace: Trace, tracer: HttpTracer, client) -> None:
         return
 
     cookies = client._session.cookies  # private, but this is a debug script
+    trace.step("login", f"POST {LOGIN_ENDPOINT} -> {response.status_code}")
     trace.step("login", f"final url={response.url}")
     trace.step("login", f"session cookies={sorted(cookies.keys())}")
 
-    body = response.text.lower()
-    markers = [marker for marker in LOGGED_IN_MARKERS if marker in body]
-    trace.step("login", "loginErrors tag: absent (AimHarderClient did not raise)")
-    if markers:
-        trace.step("login", f"authenticated: LIKELY (found {markers} in response)")
+    token = cookies.get(AUTH_COOKIE_NAME)
+    if token:
+        trace.step(
+            "login",
+            f"authenticated: CONFIRMED — {AUTH_COOKIE_NAME} issued ({len(token)} chars),"
+            " scoped to reach the gym subdomain",
+        )
     else:
         trace.step(
             "login",
-            "authenticated: UNCONFIRMED — no logged-in marker found. AimHarderClient"
-            " only detects login *failure*, so an unauthenticated session gets this far.",
+            f"authenticated: NO — {AUTH_COOKIE_NAME} missing. AimHarderClient raises in"
+            " this case, so reaching here without it means the client itself is broken.",
         )
+    trace.step(
+        "login",
+        "note: the cookie proves login succeeded, not that the session is still live."
+        " Only the [book] response can show that — the class listing below answers"
+        " unauthenticated callers with real data too.",
+    )
 
 
 def stage_classes(trace: Trace, tracer: HttpTracer, classes: list) -> list[dict]:
@@ -420,7 +428,7 @@ def stage_book(
     raised = None
     try:
         client.book_class(matched)
-    except BookingFailed as error:
+    except (BookingFailed, AuthenticationFailed) as error:
         raised = error
 
     response = tracer.find_response(lambda url: url.rstrip("/").endswith("/api/book"))
@@ -445,8 +453,18 @@ def stage_book(
         f" errorMssgLang={'present' if 'errorMssgLang' in data else 'absent'}",
     )
 
-    if raised is not None:
-        trace.step("book", f"VERDICT: client raised BookingFailed({raised})")
+    trace.step(
+        "book", f"logout sentinel={'PRESENT' if data.get('logout') else 'absent'}"
+    )
+
+    if isinstance(raised, AuthenticationFailed):
+        trace.step(
+            "book",
+            f"VERDICT: session was not authenticated — {raised}. Nothing was booked."
+            " This is the failure that used to be reported as success.",
+        )
+    elif raised is not None:
+        trace.step("book", f"VERDICT: client raised {type(raised).__name__}({raised})")
     elif "errorMssg" not in data and "errorMssgLang" not in data:
         trace.step(
             "book",
