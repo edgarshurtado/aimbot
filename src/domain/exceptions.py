@@ -1,5 +1,9 @@
 MESSAGE_BOOKING_FAILED_NO_CREDIT = "No credit available"
 MESSAGE_BOOKING_FAILED_UNKNOWN = "Unknown error"
+MESSAGE_LOGIN_REJECTED = "Credentials rejected by the platform"
+MESSAGE_LOGIN_NOT_AUTHENTICATED = (
+    "Login returned no session cookie — credentials were not accepted"
+)
 MESSAGE_BOX_IS_CLOSED = "Box is closed"
 MESSAGE_GYM_CLASS_NOT_FOUND = "Gym class not found"
 

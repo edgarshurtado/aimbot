@@ -7,7 +7,7 @@ from unittest.mock import ANY
 
 from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
 from domain.models import GymClass
-from domain.exceptions import BookingFailed
+from domain.exceptions import AuthenticationFailed, BookingFailed
 from domain.ports.gym_client import IGymClientFactory
 from infrastructure.aimharder.client import AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory
@@ -127,6 +127,51 @@ def test_login_finds_auth_cookie_set_on_a_redirect_hop(http_mock):
 
     client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
     assert client._session.cookies.get("amhrdrauth") == AUTH_TOKEN
+
+
+# ── Login failure detection ───────────────────────────────────────────────────
+
+
+def test_login_rejects_wrong_credentials(http_mock):
+    http_mock.add(
+        rsps_lib.POST,
+        LOGIN_ENDPOINT,
+        status=401,
+        json={"error": {"code": 401, "message": "LOGIN_ERROR_LOGIN"}},
+    )
+    with pytest.raises(AuthenticationFailed):
+        AimHarderClient("foo@bar.com", "wrongpass", BOX_ID, BOX_NAME)
+
+
+def test_login_surfaces_the_platform_error_message(http_mock):
+    http_mock.add(
+        rsps_lib.POST,
+        LOGIN_ENDPOINT,
+        status=401,
+        json={"error": {"code": 401, "message": "LOGIN_ERROR_LOGIN"}},
+    )
+    with pytest.raises(AuthenticationFailed, match="LOGIN_ERROR_LOGIN"):
+        AimHarderClient("foo@bar.com", "wrongpass", BOX_ID, BOX_NAME)
+
+
+def test_login_fails_when_no_auth_cookie_is_issued(http_mock):
+    """Regression guard for the silent-booking bug.
+
+    A 200 that carries no auth cookie means we are not logged in. Returning that
+    session made every later call run unauthenticated: the class listing still
+    answered with real data, and the booking call reported success while booking
+    nothing. Login must never hand back a session it cannot vouch for.
+    """
+    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, status=200, json={"user": {"id": 1}})
+
+    with pytest.raises(AuthenticationFailed):
+        AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
+
+
+def test_login_raises_on_server_error(http_mock):
+    http_mock.add(rsps_lib.POST, LOGIN_ENDPOINT, status=500)
+    with pytest.raises(Exception):
+        AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
 
 # ── get_classes tests ─────────────────────────────────────────────────────────

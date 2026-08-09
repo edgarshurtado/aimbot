@@ -13,9 +13,12 @@ from constants import (
     classes_endpoint,
 )
 from domain.exceptions import (
+    AuthenticationFailed,
     BookingFailed,
     MESSAGE_BOOKING_FAILED_NO_CREDIT,
     MESSAGE_BOOKING_FAILED_UNKNOWN,
+    MESSAGE_LOGIN_NOT_AUTHENTICATED,
+    MESSAGE_LOGIN_REJECTED,
 )
 from domain.models import GymClass
 from domain.ports.gym_client import IGymClient
@@ -28,6 +31,14 @@ def _generate_fingerprint() -> str:
     """A per-login device identifier the platform expects alongside the credentials."""
     alphabet = string.ascii_lowercase + string.digits
     return "".join(random.choices(alphabet, k=FINGERPRINT_LENGTH))
+
+
+def _platform_error(response) -> str:
+    """Best-effort extraction of the platform's error message for diagnostics."""
+    try:
+        return str(response.json()["error"]["message"])
+    except (ValueError, KeyError, TypeError):
+        return f"HTTP {response.status_code}"
 
 
 def _rescope_auth_cookie(session: Session) -> None:
@@ -67,9 +78,19 @@ class AimHarderClient(IGymClient):
                 "fingerprint": _generate_fingerprint(),
             },
         )
+        if response.status_code == HTTPStatus.UNAUTHORIZED:
+            raise AuthenticationFailed(
+                f"{MESSAGE_LOGIN_REJECTED}: {_platform_error(response)}"
+            )
         response.raise_for_status()
 
         _rescope_auth_cookie(session)
+
+        # Assert authentication positively. The platform answers an unauthenticated
+        # session with ordinary-looking 200s rather than errors, so the presence of
+        # the session cookie is the only trustworthy proof that login worked.
+        if session.cookies.get(AUTH_COOKIE_NAME) is None:
+            raise AuthenticationFailed(MESSAGE_LOGIN_NOT_AUTHENTICATED)
         return session
 
     def get_classes(self, target_day: datetime) -> list[GymClass]:
