@@ -27,6 +27,11 @@ from infrastructure.aimharder.raw_booking import RawBooking
 
 FINGERPRINT_LENGTH = 50
 
+# requests waits forever without this. A hang is the one failure a catch-all
+# cannot catch: the caller's thread never returns, so a member's /add
+# conversation would sit unanswered and a Trigger Time job would never finish.
+REQUEST_TIMEOUT_SECONDS = 30
+
 
 def _generate_fingerprint() -> str:
     """A per-login device identifier the platform expects alongside the credentials."""
@@ -90,6 +95,7 @@ class AimHarderClient(IGymClient):
                 "password": password,
                 "fingerprint": _generate_fingerprint(),
             },
+            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         if response.status_code == HTTPStatus.UNAUTHORIZED:
             raise AuthenticationFailed(
@@ -110,6 +116,7 @@ class AimHarderClient(IGymClient):
         response = self._session.get(
             classes_endpoint(self._box_name),
             params={"box": self._box_id, "day": target_day.strftime("%Y%m%d")},
+            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         data = response.json()
         _raise_if_logged_out(data)
@@ -131,6 +138,7 @@ class AimHarderClient(IGymClient):
                 "day": gym_class.class_start.strftime("%Y%m%d"),
                 "insist": 0,
             },
+            timeout=REQUEST_TIMEOUT_SECONDS,
         )
         if response.status_code == HTTPStatus.OK:
             data = response.json()

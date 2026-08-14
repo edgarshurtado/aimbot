@@ -3,13 +3,16 @@ import json
 import pytest
 import responses as rsps_lib
 from datetime import date, datetime
+from http import HTTPStatus
 from unittest.mock import ANY
+
+from requests import Session
 
 from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
 from domain.models import GymClass
 from domain.exceptions import AuthenticationFailed, BookingFailed
 from domain.ports.gym_client import IGymClientFactory
-from infrastructure.aimharder.client import AimHarderClient
+from infrastructure.aimharder.client import REQUEST_TIMEOUT_SECONDS, AimHarderClient
 from infrastructure.aimharder.client_factory import AimHarderClientFactory
 from infrastructure.aimharder.gym_config import IAimHarderGym
 from infrastructure.aimharder.raw_booking import RawBooking
@@ -412,6 +415,58 @@ def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
     result = client.get_classes(datetime(2027, 3, 15))
     assert result[0].max_spots == 0
     assert result[0].spots_available == 0
+
+
+# ── Request timeouts ──────────────────────────────────────────────────────────
+#
+# requests waits indefinitely when no timeout is given, and a hang is the one
+# failure "catch everything" cannot catch — the caller's thread simply never
+# returns. Asserted here rather than in an integration test because `responses`
+# does not expose the timeout kwarg.
+
+
+def test_login_request_carries_a_timeout(mocker):
+    post = mocker.patch.object(Session, "post")
+    post.return_value.status_code = HTTPStatus.OK
+
+    # No auth cookie is issued through the patched call, so login rejects the
+    # session — irrelevant here; the request has already been made.
+    with pytest.raises(AuthenticationFailed):
+        AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
+
+    assert post.call_args.kwargs["timeout"] == REQUEST_TIMEOUT_SECONDS
+
+
+def test_class_listing_request_carries_a_timeout(http_mock, mocker):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
+
+    get = mocker.patch.object(client._session, "get")
+    get.return_value.json.return_value = {"bookings": []}
+
+    client.get_classes(datetime(2027, 3, 15))
+
+    assert get.call_args.kwargs["timeout"] == REQUEST_TIMEOUT_SECONDS
+
+
+def test_booking_request_carries_a_timeout(http_mock, mocker):
+    _mock_login_success(http_mock)
+    client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
+    gym_class = GymClass(
+        name="WOD",
+        class_start=datetime(2027, 3, 2, 11, 0),
+        spots_available=5,
+        max_spots=20,
+    )
+    client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
+
+    post = mocker.patch.object(client._session, "post")
+    post.return_value.status_code = HTTPStatus.OK
+    post.return_value.json.return_value = {}
+
+    client.book_class(gym_class)
+
+    assert post.call_args.kwargs["timeout"] == REQUEST_TIMEOUT_SECONDS
 
 
 # ── Factory tests ─────────────────────────────────────────────────────────────
