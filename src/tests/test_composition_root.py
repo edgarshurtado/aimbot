@@ -108,8 +108,9 @@ def test_startup_recovery_reschedules_all_user_goals(mocker):
     schedule_uc = mock_schedule_uc_cls.return_value
     schedule_uc.execute.assert_called_once_with(
         user_id=1,
-        class_start=datetime(2027, 3, 15, 18, 30),
-        class_name="WOD",
+        booking_goal=BookingGoal(
+            class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD"
+        ),
     )
 
 

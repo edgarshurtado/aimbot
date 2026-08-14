@@ -43,13 +43,12 @@ def test_schedule_booking_creates_job_and_persists_goal(
 ):
     gym_config.booking_trigger_time.return_value = datetime(2027, 3, 12, 18, 30)
 
-    schedule_uc.execute(
-        user_id=DEFAULT_USER.id, class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD"
-    )
-
     expected_goal = BookingGoal(
         class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD"
     )
+
+    schedule_uc.execute(user_id=DEFAULT_USER.id, booking_goal=expected_goal)
+
     scheduler.schedule_job.assert_called_once_with(
         run_at=datetime(2027, 3, 12, 18, 30),
         user_id=DEFAULT_USER.id,
@@ -67,8 +66,9 @@ def test_schedule_booking_user_not_found(
     with pytest.raises(UserNotFound):
         uc.execute(
             user_id=999,
-            class_start=datetime(2027, 3, 15, 18, 30),
-            class_name="WOD",
+            booking_goal=BookingGoal(
+                class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD"
+            ),
         )
 
     scheduler.schedule_job.assert_not_called()
@@ -81,7 +81,10 @@ def test_schedule_booking_uses_platform_trigger_time(
     gym_config.booking_trigger_time.return_value = datetime(2027, 6, 7, 10, 0)
 
     schedule_uc.execute(
-        user_id=DEFAULT_USER.id, class_start=datetime(2027, 6, 10, 10, 0), class_name="WOD"
+        user_id=DEFAULT_USER.id,
+        booking_goal=BookingGoal(
+            class_start=datetime(2027, 6, 10, 10, 0), class_name="WOD"
+        ),
     )
 
     scheduler.schedule_job.assert_called_once()

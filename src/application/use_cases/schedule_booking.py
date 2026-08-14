@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from domain.exceptions import UserNotFound
 from domain.models import BookingGoal
 from domain.ports.booking_repository import IBookingRepository
@@ -21,13 +19,12 @@ class ScheduleBookingUseCase:
         self._scheduler = scheduler
         self._gym_config = gym_config
 
-    def execute(self, user_id: int, class_start: datetime, class_name: str) -> None:
+    def execute(self, user_id: int, booking_goal: BookingGoal) -> None:
         user = self._user_repo.get_user(user_id)
         if user is None:
             raise UserNotFound(f"User {user_id} not found")
 
-        booking_goal = BookingGoal(class_start=class_start, class_name=class_name)
-        trigger = self._gym_config.booking_trigger_time(class_start)
+        trigger = self._gym_config.booking_trigger_time(booking_goal.class_start)
         self._scheduler.schedule_job(
             run_at=trigger,
             user_id=user_id,

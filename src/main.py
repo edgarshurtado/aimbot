@@ -31,11 +31,7 @@ def bootstrap():
     # Startup recovery: re-schedule persisted booking goals
     for user in json_repo.get_all_users():
         for goal in user.booking_goals:
-            schedule_uc.execute(
-                user_id=user.id,
-                class_start=goal.class_start,
-                class_name=goal.class_name,
-            )
+            schedule_uc.execute(user_id=user.id, booking_goal=goal)
 
     apscheduler.start()
 

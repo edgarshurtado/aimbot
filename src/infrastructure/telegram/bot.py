@@ -14,6 +14,7 @@ from telegram.ext import (
 
 from application.use_cases.remove_booking import RemoveBookingUseCase
 from application.use_cases.schedule_booking import ScheduleBookingUseCase
+from domain.models import BookingGoal
 from domain.ports.user_repository import IUserRepository
 from infrastructure.telegram.group_notifier import get_telegram_token
 
@@ -227,8 +228,7 @@ class TelegramBot:
 
         self._schedule_uc.execute(
             user_id=update.effective_user.id,
-            class_start=class_start,
-            class_name=class_name,
+            booking_goal=BookingGoal(class_start=class_start, class_name=class_name),
         )
 
         user = self._user_repo.get_user(update.effective_user.id)

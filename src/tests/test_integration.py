@@ -85,8 +85,13 @@ def test_schedule_then_remove_roundtrip(schedule_file):
     schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, gym_config)
     remove_uc = RemoveBookingUseCase(json_repo, apscheduler)
 
+    from domain.models import BookingGoal
+
     class_start = datetime(2027, 6, 15, 10, 0)
-    schedule_uc.execute(user_id=66666666, class_start=class_start, class_name="WOD")
+    schedule_uc.execute(
+        user_id=66666666,
+        booking_goal=BookingGoal(class_start=class_start, class_name="WOD"),
+    )
 
     # After scheduling: user has 1 booking goal
     user = json_repo.get_user(66666666)
@@ -122,11 +127,7 @@ def test_startup_recovery_with_real_components(schedule_file_with_goal):
     # Run startup recovery (mirrors main.py bootstrap loop)
     for user in json_repo.get_all_users():
         for goal in user.booking_goals:
-            schedule_uc.execute(
-                user_id=user.id,
-                class_start=goal.class_start,
-                class_name=goal.class_name,
-            )
+            schedule_uc.execute(user_id=user.id, booking_goal=goal)
 
     # APScheduler should have exactly 1 job scheduled
     jobs = apscheduler._scheduler.get_jobs()
