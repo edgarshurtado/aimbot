@@ -73,6 +73,30 @@ def test_start_starts_scheduler(mocker):
     mock_start.assert_called_once()
 
 
+def test_scheduling_the_same_goal_twice_leaves_one_job(adapter):
+    """Re-scheduling a goal must be a no-op, not a crash.
+
+    JsonRepository already treats a repeated goal as harmless, but the scheduler
+    goes first — so without this the member scrolling back and tapping an old
+    class button gets a ConflictingIdError reported as a failure.
+    """
+    a, _ = adapter
+    goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+    a.start()  # a running scheduler enforces job-id uniqueness; a pending one does not
+
+    try:
+        a.schedule_job(
+            run_at=datetime(2027, 3, 12, 18, 30), user_id=123, booking_goal=goal
+        )
+        a.schedule_job(
+            run_at=datetime(2027, 3, 12, 18, 30), user_id=123, booking_goal=goal
+        )
+
+        assert len(a._scheduler.get_jobs()) == 1
+    finally:
+        a._scheduler.shutdown(wait=False)
+
+
 def test_schedule_job_different_bookings_create_separate_jobs(adapter):
     a, _ = adapter
     goal1 = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")

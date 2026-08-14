@@ -28,6 +28,10 @@ class APSchedulerAdapter(IJobScheduler):
             args=[user_id, booking_goal],
             id=self._job_id(user_id, booking_goal),
             misfire_grace_time=None,  # always fire even if missed
+            # A repeated goal is a no-op, matching the repository's dedup. Without
+            # this the scheduler raises ConflictingIdError and, going first, turns
+            # a harmless repeat into a reported failure.
+            replace_existing=True,
         )
 
     def remove_job(self, user_id: int, booking_goal: BookingGoal) -> None:
