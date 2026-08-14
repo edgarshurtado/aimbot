@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from application.use_cases.execute_booking import ExecuteBookingUseCase  # noqa: E402
+from application.use_cases.list_day_classes import ListDayClassesUseCase  # noqa: E402
 from application.use_cases.remove_booking import RemoveBookingUseCase  # noqa: E402
 from application.use_cases.schedule_booking import ScheduleBookingUseCase  # noqa: E402
 from infrastructure.aimharder.client_factory import AimHarderClientFactory  # noqa: E402
@@ -25,8 +26,9 @@ def bootstrap():
     apscheduler = APSchedulerAdapter(on_job_execute=execute_uc.execute)
     schedule_uc = ScheduleBookingUseCase(json_repo, json_repo, apscheduler, gym_config)
     remove_uc = RemoveBookingUseCase(json_repo, apscheduler)
+    list_day_classes_uc = ListDayClassesUseCase(json_repo, factory)
 
-    telegram_bot.set_use_cases(schedule_uc, remove_uc)
+    telegram_bot.set_use_cases(schedule_uc, remove_uc, list_day_classes_uc)
 
     # Startup recovery: re-schedule persisted booking goals
     for user in json_repo.get_all_users():
@@ -44,6 +46,7 @@ def bootstrap():
         "apscheduler": apscheduler,
         "schedule_uc": schedule_uc,
         "remove_uc": remove_uc,
+        "list_day_classes_uc": list_day_classes_uc,
     }
 
 

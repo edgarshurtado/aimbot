@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock
 
 from domain.models import BookingGoal, User
 from domain.ports.user_repository import IUserRepository
+from application.use_cases.list_day_classes import ListDayClassesUseCase
 from application.use_cases.schedule_booking import ScheduleBookingUseCase
 from application.use_cases.remove_booking import RemoveBookingUseCase
 from infrastructure.telegram.bot import TelegramBot
@@ -25,6 +26,7 @@ def telegram_bot(mocker):
     user_repo = mocker.Mock(spec=IUserRepository)
     schedule_uc = mocker.Mock(spec=ScheduleBookingUseCase)
     remove_uc = mocker.Mock(spec=RemoveBookingUseCase)
+    list_day_classes_uc = mocker.Mock(spec=ListDayClassesUseCase)
 
     # Patch ApplicationBuilder so TelegramBot doesn't try to connect to Telegram
     mock_app = mocker.Mock()
@@ -36,7 +38,7 @@ def telegram_bot(mocker):
     mocker.patch("infrastructure.telegram.bot.get_telegram_token", return_value="test-token")
 
     bot = TelegramBot(user_repo=user_repo)
-    bot.set_use_cases(schedule_uc, remove_uc)
+    bot.set_use_cases(schedule_uc, remove_uc, list_day_classes_uc)
     return bot, user_repo, schedule_uc, remove_uc
 
 
@@ -145,17 +147,18 @@ async def test_add_flow_unauthorized_user(telegram_bot, mocker):
 
 
 @pytest.mark.asyncio
-async def test_add_flow_invalid_time_retries(telegram_bot, mocker):
+async def test_add_flow_invalid_day_retries(telegram_bot, mocker):
     bot, user_repo, schedule_uc, remove_uc = telegram_bot
 
-    update = _make_update(12345, mocker, text="25:99")
-    context = _make_context(mocker, user_data={"selected_date": datetime(2027, 3, 15)})
+    update = _make_update(12345, mocker, text="not a day")
+    context = _make_context(mocker)
 
-    await bot._TelegramBot__time_selected_handler(update, context)
+    await bot._TelegramBot__day_selected_handler(update, context)
 
     context.bot.send_message.assert_called_once()
     text = context.bot.send_message.call_args.kwargs.get("text", "")
     assert "invalid" in text.lower() or "format" in text.lower()
+    schedule_uc.execute.assert_not_called()
 
 
 @pytest.mark.asyncio

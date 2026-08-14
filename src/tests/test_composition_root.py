@@ -169,6 +169,25 @@ def test_apscheduler_start_called(mocker):
     mock_apscheduler.start.assert_called_once()
 
 
+def test_list_day_classes_uc_handed_to_the_bot(mocker):
+    """/add cannot offer real classes unless the bot holds the listing use case."""
+    mocker.patch("main.JsonRepository").return_value.get_all_users.return_value = []
+    mocker.patch("main.AimHarderClientFactory")
+    mock_bot_cls = mocker.patch("main.TelegramBot")
+    mocker.patch("main.TelegramUserNotifier")
+
+    mocker.patch("main.ExecuteBookingUseCase")
+    mocker.patch("main.APSchedulerAdapter")
+    mocker.patch("main.ScheduleBookingUseCase")
+    mocker.patch("main.RemoveBookingUseCase")
+    mock_list_uc_cls = mocker.patch("main.ListDayClassesUseCase")
+
+    bootstrap()
+
+    args = mock_bot_cls.return_value.set_use_cases.call_args.args
+    assert mock_list_uc_cls.return_value in args
+
+
 def test_execute_uc_wired_as_job_handler(mocker):
     """APSchedulerAdapter must be constructed with execute_uc.execute as on_job_execute."""
     mocker.patch("main.JsonRepository").return_value.get_all_users.return_value = []

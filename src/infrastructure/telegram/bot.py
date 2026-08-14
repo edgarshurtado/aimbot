@@ -2,9 +2,16 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Update,
+)
 from telegram.ext import (
     ApplicationBuilder,
+    CallbackQueryHandler,
     ContextTypes,
     CommandHandler,
     ConversationHandler,
@@ -12,15 +19,22 @@ from telegram.ext import (
     filters,
 )
 
+from application.use_cases.list_day_classes import ListDayClassesUseCase
 from application.use_cases.remove_booking import RemoveBookingUseCase
 from application.use_cases.schedule_booking import ScheduleBookingUseCase
-from domain.models import BookingGoal
+from domain.exceptions import AuthenticationFailed
+from domain.models import BookingGoal, GymClass
 from domain.ports.user_repository import IUserRepository
 from infrastructure.telegram.group_notifier import get_telegram_token
 
-SELECTING_DAY, SELECTING_TIME, SELECTING_CLASS_NAME = range(3)
+logger = logging.getLogger(__name__)
 
-_VALID_CLASSES = ["WOD", "GYMNASTIC", "OPEN", "HALTEROFILIA"]
+SELECTING_DAY, SELECTING_CLASS = range(2)
+
+# Where the day's Timetable is parked between the two steps of /add. It lives in
+# python-telegram-bot's in-memory user_data — no persistence is configured, so a
+# restart between the taps empties it.
+_DAY_CLASSES = "day_classes"
 
 
 class TelegramBot:
@@ -32,6 +46,7 @@ class TelegramBot:
         self._user_repo = user_repo
         self._schedule_uc: ScheduleBookingUseCase | None = None
         self._remove_uc: RemoveBookingUseCase | None = None
+        self._list_day_classes_uc: ListDayClassesUseCase | None = None
         self.__application = ApplicationBuilder().token(get_telegram_token()).build()
         self.__register_handlers()
 
@@ -39,9 +54,11 @@ class TelegramBot:
         self,
         schedule_uc: ScheduleBookingUseCase,
         remove_uc: RemoveBookingUseCase,
+        list_day_classes_uc: ListDayClassesUseCase,
     ) -> None:
         self._schedule_uc = schedule_uc
         self._remove_uc = remove_uc
+        self._list_day_classes_uc = list_day_classes_uc
 
     def run(self) -> None:
         self.__application.run_polling()
@@ -66,14 +83,7 @@ class TelegramBot:
                 SELECTING_DAY: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, self.__day_selected_handler)
                 ],
-                SELECTING_TIME: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.__time_selected_handler)
-                ],
-                SELECTING_CLASS_NAME: [
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND, self.__class_name_selected_handler
-                    )
-                ],
+                SELECTING_CLASS: [CallbackQueryHandler(self.__class_selected_handler)],
             },
             fallbacks=[CommandHandler("cancel", self.__cancel_booking_handler)],
         )
@@ -130,11 +140,25 @@ class TelegramBot:
             keyboard.append([button_text])
         return ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
 
-    def __generate_class_keyboard(self) -> ReplyKeyboardMarkup:
-        return ReplyKeyboardMarkup(
-            [[name] for name in _VALID_CLASSES],
-            one_time_keyboard=True,
-            resize_keyboard=True,
+    @staticmethod
+    def __generate_classes_keyboard(classes: list[GymClass]) -> InlineKeyboardMarkup:
+        """One button per real class, identified by its position in the list.
+
+        The label carries the start time as well as the name because either alone
+        can repeat within a day; it deliberately shows no spot count, which would
+        be stale by Trigger Time. The identity travels as callback data rather
+        than as text the member could mistype.
+        """
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        f"{gym_class.class_start.strftime('%H:%M')} {gym_class.name}",
+                        callback_data=str(idx),
+                    )
+                ]
+                for idx, gym_class in enumerate(classes)
+            ]
         )
 
     async def __start_booking_handler(
@@ -163,16 +187,6 @@ class TelegramBot:
             selected = datetime.strptime(f"{day_str}-{now.year}", "%d-%m-%Y")
             if selected < now.replace(hour=0, minute=0, second=0, microsecond=0):
                 selected = datetime.strptime(f"{day_str}-{now.year + 1}", "%d-%m-%Y")
-            context.user_data["selected_date"] = selected
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=(
-                    f"Selected day: {selected.strftime('%d/%m/%Y')}\n\n"
-                    "Please, enter the time in HH:MM format (example: 18:30):"
-                ),
-                reply_markup=ReplyKeyboardRemove(),
-            )
-            return SELECTING_TIME
         except (ValueError, IndexError):
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
@@ -180,68 +194,104 @@ class TelegramBot:
             )
             return SELECTING_DAY
 
-    async def __time_selected_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
-        time_text = update.message.text
-        try:
-            hour, minute = map(int, time_text.split(":"))
-            if not (0 <= hour < 24 and 0 <= minute < 60):
-                raise ValueError("Invalid time")
-            context.user_data["selected_time"] = time_text
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=f"Selected time: {time_text}\n\nPlease, select the class name:",
-                reply_markup=self.__generate_class_keyboard(),
-            )
-            return SELECTING_CLASS_NAME
-        except (ValueError, IndexError):
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Invalid time format. Please enter the time in HH:MM format (example: 18:30):",
-            )
-            return SELECTING_TIME
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Checking the timetable for {selected.strftime('%d/%m/%Y')}…",
+            reply_markup=ReplyKeyboardRemove(),
+        )
 
-    async def __class_name_selected_handler(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
-        class_name = update.message.text.upper()
-        if class_name not in _VALID_CLASSES:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Invalid class name. Please select a class name from the keyboard:",
-                reply_markup=self.__generate_class_keyboard(),
-            )
-            return SELECTING_CLASS_NAME
+        classes = await self.__fetch_day_classes(update, context, selected)
+        if classes is None:
+            return ConversationHandler.END
 
-        selected_date = context.user_data.get("selected_date")
-        selected_time = context.user_data.get("selected_time")
-        if not selected_date or not selected_time:
+        if not classes:
+            context.user_data.clear()
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text="Error: incomplete booking information. Please start again with /add",
+                text=f"No classes published for {selected.strftime('%d/%m/%Y')}.",
             )
             return ConversationHandler.END
 
-        hour, minute = map(int, selected_time.split(":"))
-        class_start = selected_date.replace(hour=hour, minute=minute)
-
-        self._schedule_uc.execute(
-            user_id=update.effective_user.id,
-            booking_goal=BookingGoal(class_start=class_start, class_name=class_name),
-        )
-
-        user = self._user_repo.get_user(update.effective_user.id)
-        email = user.email if user else str(update.effective_user.id)
+        context.user_data[_DAY_CLASSES] = classes
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=(
-                f"✅ Booking scheduled for {email}\n"
-                f"📅 {class_start.strftime('%d/%m/%Y %H:%M')}\n"
-                f"🏋️ {class_name}"
-            ),
-            reply_markup=ReplyKeyboardRemove(),
+            text="Select the class:",
+            reply_markup=self.__generate_classes_keyboard(classes),
         )
+        return SELECTING_CLASS
+
+    async def __fetch_day_classes(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+        day: datetime,
+    ) -> list[GymClass] | None:
+        """The day's Timetable, or None once the member has been told why not.
+
+        Runs off the event loop: the use case logs in and then lists, two blocking
+        round trips that would otherwise freeze every other member's conversation.
+        """
+        try:
+            return await asyncio.to_thread(
+                self._list_day_classes_uc.execute, update.effective_user.id, day
+            )
+        except AuthenticationFailed:
+            message = "Couldn't sign in to the gym — check the stored credentials."
+        except Exception:
+            # Deliberately broad: the class listing has no guard around .json(), so
+            # an HTML error page from a 502 surfaces as a bare ValueError. Letting
+            # it escape would park the conversation in SELECTING_CLASS and feed the
+            # member's next message to the class handler.
+            logger.exception("Could not read the timetable for %s", day.date())
+            message = "Couldn't reach the gym, try again shortly."
+
+        context.user_data.clear()
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id, text=message
+        )
+        return None
+
+    async def __class_selected_handler(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> int:
+        query = update.callback_query
+        await query.answer()
+        # Drop the buttons so the same class can't be tapped twice.
+        await query.edit_message_reply_markup(reply_markup=None)
+
+        classes = context.user_data.get(_DAY_CLASSES) or []
+        try:
+            gym_class = classes[int(query.data)]
+        except (ValueError, IndexError):
+            context.user_data.clear()
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="That class list expired. Please start again with /add",
+            )
+            return ConversationHandler.END
+
+        user_id = update.effective_user.id
+        booking_goal = BookingGoal(
+            class_start=gym_class.class_start, class_name=gym_class.name
+        )
+
+        user = self._user_repo.get_user(user_id)
+        already_scheduled = user is not None and booking_goal in user.booking_goals
+
+        self._schedule_uc.execute(user_id=user_id, booking_goal=booking_goal)
+
+        who = user.email if user else str(user_id)
+        when = booking_goal.class_start.strftime("%d/%m/%Y %H:%M")
+        if already_scheduled:
+            text = f"👍 You already had {booking_goal.class_name} on {when} scheduled"
+        else:
+            text = (
+                f"✅ Booking scheduled for {who}\n"
+                f"📅 {when}\n"
+                f"🏋️ {booking_goal.class_name}"
+            )
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=text)
+
         context.user_data.clear()
         return ConversationHandler.END
 
