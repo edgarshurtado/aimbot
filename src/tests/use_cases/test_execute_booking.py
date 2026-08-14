@@ -141,6 +141,31 @@ def test_execute_booking_no_matching_class_raises(execute_uc, mock_client):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
 
+def test_execute_booking_does_not_settle_for_a_name_that_merely_contains_the_goal(
+    execute_uc, mock_client
+):
+    """A goal's class name must match the timetable's verbatim, not as a substring.
+
+    Names are taken straight from the published Timetable now, so a goal reading
+    'WOD' means the class called exactly 'WOD'. Matching on containment would book
+    'WOD KIDS' whenever the box drops the plain WOD from that slot — a wrong class
+    reported as a success, which is worse than not booking at all.
+    """
+    mock_client.get_classes.return_value = [
+        GymClass(
+            name="WOD KIDS",
+            class_start=datetime(2027, 3, 15, 18, 30),
+            spots_available=5,
+            max_spots=20,
+        )
+    ]
+
+    with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
+        execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
+
+    mock_client.book_class.assert_not_called()
+
+
 def test_execute_booking_box_closed(execute_uc, mock_client):
     mock_client.get_classes.return_value = []
 

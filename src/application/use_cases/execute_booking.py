@@ -40,7 +40,7 @@ class ExecuteBookingUseCase:
                 c
                 for c in classes
                 if c.class_start == booking_goal.class_start
-                and booking_goal.class_name in c.name
+                and c.name == booking_goal.class_name
             ),
             None,
         )
