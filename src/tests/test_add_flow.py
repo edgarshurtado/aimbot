@@ -6,14 +6,20 @@ process edges are mocked: aimharder over HTTP (``responses``) and the Telegram
 application.
 """
 import json
+import threading
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from urllib.parse import parse_qs
 
 import pytest
 import responses as rsps_lib
 
-from constants import LOGIN_ENDPOINT, classes_endpoint
+from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
+from domain.exceptions import BookingFailed, MESSAGE_GYM_CLASS_NOT_FOUND
 from domain.ports.gym_config import IGymConfig
+from domain.ports.notifier import IUserNotifier
+from application.use_cases.execute_booking import ExecuteBookingUseCase
 from application.use_cases.list_day_classes import ListDayClassesUseCase
 from application.use_cases.schedule_booking import ScheduleBookingUseCase
 from application.use_cases.remove_booking import RemoveBookingUseCase
@@ -59,7 +65,11 @@ def schedule_file(tmp_path):
 
 @pytest.fixture
 def wiring(schedule_file, mocker):
-    """The real composition, with only Telegram's Application faked out."""
+    """The real composition, with only Telegram's Application faked out.
+
+    The scheduler fires ExecuteBookingUseCase exactly as main.bootstrap() wires
+    it, so a goal made through /add can be carried all the way to a booking.
+    """
     mock_builder = mocker.Mock()
     mock_builder.token.return_value = mock_builder
     mock_builder.build.return_value = mocker.Mock()
@@ -76,7 +86,10 @@ def wiring(schedule_file, mocker):
 
     json_repo = JsonRepository(schedule_file)
     factory = AimHarderClientFactory(gym=gym)
-    apscheduler = APSchedulerAdapter(on_job_execute=lambda *a: None)
+    notifier = mocker.Mock(spec=IUserNotifier)
+
+    execute_uc = ExecuteBookingUseCase(json_repo, json_repo, factory, notifier)
+    apscheduler = APSchedulerAdapter(on_job_execute=execute_uc.execute)
 
     bot = TelegramBot(user_repo=json_repo)
     bot.set_use_cases(
@@ -84,7 +97,14 @@ def wiring(schedule_file, mocker):
         RemoveBookingUseCase(json_repo, apscheduler),
         ListDayClassesUseCase(json_repo, factory),
     )
-    return bot, json_repo, apscheduler
+    return SimpleNamespace(
+        bot=bot,
+        repo=json_repo,
+        scheduler=apscheduler,
+        gym_config=gym_config,
+        execute_uc=execute_uc,
+        notifier=notifier,
+    )
 
 
 def _update(mocker, text=None, callback_data=None):
@@ -155,7 +175,7 @@ async def _tap_class(bot, mocker, context, index):
 async def test_day_selection_offers_one_button_per_published_class(
     wiring, http_mock, mocker
 ):
-    bot, _, _ = wiring
+    bot = wiring.bot
     _mock_login_success(http_mock)
     _mock_timetable(
         http_mock,
@@ -179,7 +199,7 @@ async def test_tapping_a_class_persists_the_timetables_exact_name(
     wiring, http_mock, mocker
 ):
     """The stored name is the platform's, byte for byte — not a member's guess."""
-    bot, json_repo, apscheduler = wiring
+    bot, json_repo, apscheduler = wiring.bot, wiring.repo, wiring.scheduler
     _mock_login_success(http_mock)
     _mock_timetable(http_mock, [_booking("2", "1830_60", "WOD KIDS")])
     context = _context(mocker)
@@ -196,7 +216,7 @@ async def test_tapping_a_class_persists_the_timetables_exact_name(
 
 @pytest.mark.asyncio
 async def test_tapping_a_class_clears_the_buttons(wiring, http_mock, mocker):
-    bot, _, _ = wiring
+    bot = wiring.bot
     _mock_login_success(http_mock)
     _mock_timetable(http_mock, [_booking("2", "1830_60", "WOD")])
     context = _context(mocker)
@@ -218,7 +238,7 @@ async def test_empty_timetable_ends_the_conversation_without_scheduling(
 ):
     from telegram.ext import ConversationHandler
 
-    bot, json_repo, apscheduler = wiring
+    bot, json_repo, apscheduler = wiring.bot, wiring.repo, wiring.scheduler
     _mock_login_success(http_mock)
     _mock_timetable(http_mock, [])
     context = _context(mocker)
@@ -235,7 +255,7 @@ async def test_empty_timetable_ends_the_conversation_without_scheduling(
 async def test_rejected_credentials_end_the_conversation(wiring, http_mock, mocker):
     from telegram.ext import ConversationHandler
 
-    bot, json_repo, _ = wiring
+    bot, json_repo = wiring.bot, wiring.repo
     http_mock.add(
         rsps_lib.POST,
         LOGIN_ENDPOINT,
@@ -260,7 +280,7 @@ async def test_a_non_json_error_page_ends_the_conversation(wiring, http_mock, mo
     """
     from telegram.ext import ConversationHandler
 
-    bot, json_repo, _ = wiring
+    bot, json_repo = wiring.bot, wiring.repo
     _mock_login_success(http_mock)
     http_mock.add(
         rsps_lib.GET,
@@ -285,7 +305,7 @@ async def test_a_non_json_error_page_ends_the_conversation(wiring, http_mock, mo
 async def test_scheduling_the_same_class_twice_is_told_not_failed(
     wiring, http_mock, mocker
 ):
-    bot, json_repo, apscheduler = wiring
+    bot, json_repo, apscheduler = wiring.bot, wiring.repo, wiring.scheduler
     apscheduler.start()
     try:
         for _ in range(2):
@@ -315,7 +335,7 @@ async def test_a_callback_with_no_remaining_list_says_it_expired(wiring, mocker)
     """user_data is in-memory, so a restart between the two taps empties it."""
     from telegram.ext import ConversationHandler
 
-    bot, json_repo, _ = wiring
+    bot, json_repo = wiring.bot, wiring.repo
     context = _context(mocker)  # nothing stashed — as after a restart
 
     state, _ = await _tap_class(bot, mocker, context, 0)
@@ -323,3 +343,81 @@ async def test_a_callback_with_no_remaining_list_says_it_expired(wiring, mocker)
     assert state == ConversationHandler.END
     assert "expired" in _sent_texts(context)[-1].lower()
     assert json_repo.get_user(USER_ID).booking_goals == []
+
+
+# ── The whole point: what was listed is what gets booked ──────────────────────
+
+
+@pytest.mark.asyncio
+async def test_the_class_the_member_tapped_is_the_class_that_gets_booked(
+    wiring, http_mock, mocker
+):
+    """/add → Trigger Time, end to end, over mocked aimharder HTTP.
+
+    Two classes share the 18:30 slot and one name contains the other, so only a
+    booking that resolved the tapped class exactly can post the right platform id.
+    This is the one test that proves the feature's actual claim; the rest verify
+    half of it.
+    """
+    bot, json_repo = wiring.bot, wiring.repo
+    scheduler = wiring.scheduler
+    timetable = [
+        _booking("100", "1830_60", "WOD"),
+        _booking("200", "1830_60", "WOD KIDS"),
+    ]
+
+    # Trigger Time has already passed, so the job fires the moment it is scheduled.
+    wiring.gym_config.booking_trigger_time.side_effect = lambda _: datetime(2020, 1, 1)
+
+    booked = threading.Event()
+    wiring.notifier.notify_user.side_effect = lambda *a: booked.set()
+
+    _mock_login_success(http_mock)  # /add reads the Timetable
+    _mock_timetable(http_mock, timetable)
+    _mock_login_success(http_mock)  # Trigger Time re-reads it before booking
+    _mock_timetable(http_mock, timetable)
+    http_mock.add(rsps_lib.POST, book_endpoint(BOX_NAME), json={}, status=200)
+
+    context = _context(mocker)
+    scheduler.start()
+    try:
+        await _pick_day(bot, mocker, context)
+        await _tap_class(bot, mocker, context, 0)  # "18:30 WOD"
+
+        assert booked.wait(timeout=5), "the scheduled booking never fired"
+    finally:
+        scheduler._scheduler.shutdown(wait=False)
+
+    book_request = http_mock.calls[-1].request
+    assert book_request.url.startswith(book_endpoint(BOX_NAME))
+    assert parse_qs(book_request.body)["id"] == ["100"]
+
+    # The goal is spent once it becomes a Booking.
+    assert json_repo.get_user(USER_ID).booking_goals == []
+
+
+def test_a_class_that_vanishes_before_trigger_time_books_nothing(
+    wiring, http_mock, mocker
+):
+    """Existence when the goal was made does not guarantee existence at Trigger Time.
+
+    The box can edit its Timetable in the days between. Exact matching must fail
+    loudly here rather than settle for whatever else occupies the slot.
+    """
+    from domain.models import BookingGoal
+
+    goal = BookingGoal(
+        class_start=datetime(2027, 6, 15, 18, 30), class_name="WOD"
+    )
+    json_repo = wiring.repo
+    json_repo.add_booking_goal(USER_ID, goal)
+
+    _mock_login_success(http_mock)
+    _mock_timetable(http_mock, [_booking("200", "1830_60", "WOD KIDS")])
+
+    with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
+        wiring.execute_uc.execute(USER_ID, goal)
+
+    # Nothing was booked and the goal survives for a human to deal with.
+    assert json_repo.get_user(USER_ID).booking_goals == [goal]
+    wiring.notifier.notify_user.assert_not_called()
