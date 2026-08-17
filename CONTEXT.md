@@ -32,11 +32,17 @@ _Avoid_: Booking period, availability window
 The moment FitBot attempts to convert a **Booking Goal** into a **Booking**.
 _Avoid_: Schedule time, run time, execution time
 
+**Lapsed Booking Goal**:
+A **Booking Goal** whose **Gym Class** has started without the goal ever becoming a **Booking**. The intent can no longer be satisfied, so it is no longer a goal — it is residue.
+_Avoid_: Expired goal (suggests a deliberate TTL that nothing enforces), stale goal (suggests out-of-date data rather than a lost opportunity), failed booking
+
 ## Relationships
 
 - A member holds zero or more **Booking Goals**
 - A **Booking Goal** targets exactly one **Gym Class**
 - A successful attempt at **Trigger Time** turns a **Booking Goal** into a **Booking** and discards the goal
+- A **Booking Goal** lapses when its **Gym Class** starts. Nothing currently discards a **Lapsed Booking Goal** — only a successful **Booking** removes a goal, so every failed attempt leaves residue behind for good
+- A member's **Booking Goals** are ordered by the start time of the **Gym Class** each one targets, soonest first. Because **Trigger Time** is a fixed interval before the class starts, this is also the order in which they will be attempted: the chronologically first goal is always the next one to fire
 - Every **Gym Class** has exactly one **Booking Window**
 - **Trigger Time** is FitBot's *estimate* of when the **Booking Window** opens — the two are not the same thing
 - A day's **Timetable** is published long before that day's **Booking Window** opens, so a member can see a **Gym Class** they cannot yet book
@@ -55,3 +61,5 @@ _Avoid_: Schedule time, run time, execution time
 - **Trigger Time** was treated as equivalent to the **Booking Window** opening — resolved: it is an estimate derived from `days_in_advance`, and its correctness is an open question, not an established fact.
 - A member's *stated* class was conflated with a *real* one — resolved: a **Booking Goal** now names a **Gym Class** the member picked out of a published **Timetable**, so the class is known to exist when the goal is made. It is still not known to be *bookable*: existence and availability are separate facts.
 - Open, not yet resolved: the platform appears to mark each **Gym Class** with whether it is currently bookable. If confirmed, the **Booking Window** becomes something FitBot can observe rather than estimate — which would settle the **Trigger Time** ambiguity above.
+- A **Booking Goal** that failed to book was treated as though it had simply not happened yet — resolved: it is a **Lapsed Booking Goal**, a distinct state with no cleanup. The definition of **Booking Goal** ("intent to obtain a place in a *future* **Gym Class**") stops applying the moment the class starts, so the two must not share a name.
+- Open, not yet resolved: two **Booking Goals** may currently target **Gym Classes** with the same start time, which aimharder itself refuses. Once FitBot rejects that too, no two of a member's goals can share a start time, and their ordering becomes total on start time alone.

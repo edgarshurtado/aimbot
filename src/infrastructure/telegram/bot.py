@@ -317,7 +317,12 @@ class TelegramBot:
         selected_goal = user.booking_goals[idx]
         self._remove_uc.execute(update.effective_user.id, selected_goal)
 
+        # Name the deletion: the goals are listed soonest first, so the one that
+        # fires next is always number 1, and a goal firing between /schedule and
+        # /remove shifts every number down by one. Echoing what went is what makes
+        # a mistaken removal visible instead of silent.
+        when = selected_goal.class_start.strftime("%d-%m-%Y %H:%M")
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Scheduled booking removed",
+            text=f"Scheduled booking removed: {when} {selected_goal.class_name}",
         )
