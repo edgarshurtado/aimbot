@@ -153,6 +153,87 @@ def test_get_user_returns_deep_copy(repository):
     assert user2.email == "some-email@gmail.com"
 
 
+# ── booking goal ordering ─────────────────────────────────────────────────────
+
+def _add_out_of_order(repository):
+    """Three goals added back to front, so insertion order reverses the real one."""
+    for class_start, class_name in [
+        (datetime(2027, 6, 22, 7, 0), "WOD"),
+        (datetime(2027, 6, 18, 19, 0), "Halterofilia"),
+        (datetime(2027, 6, 15, 10, 0), "WOD"),
+    ]:
+        repository.add_booking_goal(
+            66666666, BookingGoal(class_start=class_start, class_name=class_name)
+        )
+
+
+def test_get_user_bookings_returns_goals_soonest_first(repository):
+    _add_out_of_order(repository)
+
+    assert [g.class_start for g in repository.get_user_bookings(66666666)] == [
+        datetime(2027, 6, 15, 10, 0),
+        datetime(2027, 6, 18, 19, 0),
+        datetime(2027, 6, 22, 7, 0),
+    ]
+
+
+def test_get_user_returns_goals_soonest_first(repository):
+    """The bot reads goals through get_user, so this is the ordering it depends on."""
+    _add_out_of_order(repository)
+
+    assert [g.class_start for g in repository.get_user(66666666).booking_goals] == [
+        datetime(2027, 6, 15, 10, 0),
+        datetime(2027, 6, 18, 19, 0),
+        datetime(2027, 6, 22, 7, 0),
+    ]
+
+
+def test_ordering_survives_a_hand_edited_file(tmp_path):
+    """Entries are provisioned by hand, so the order on disk cannot be trusted."""
+    import json
+
+    dst = tmp_path / "hand_edited.json"
+    dst.write_text(
+        json.dumps(
+            [
+                {
+                    "user": {"email": "a@b.com", "password": "pw", "id": 66666666},
+                    "bookingGoals": [
+                        {"datetime": "22-06-2027 07:00", "name": "WOD"},
+                        {"datetime": "15-06-2027 10:00", "name": "WOD"},
+                    ],
+                }
+            ]
+        )
+    )
+
+    goals = JsonRepository(str(dst)).get_user_bookings(66666666)
+
+    assert [g.class_start for g in goals] == [
+        datetime(2027, 6, 15, 10, 0),
+        datetime(2027, 6, 22, 7, 0),
+    ]
+
+
+def test_goals_sharing_a_start_time_keep_their_stored_order(repository):
+    """A state aimharder refuses, so the tiebreak only has to be deterministic.
+
+    Sorting on class_start alone leaves these in stored order; asserting it keeps
+    that fallback honest rather than incidental.
+    """
+    for class_name in ["Halterofilia", "WOD"]:
+        repository.add_booking_goal(
+            66666666,
+            BookingGoal(
+                class_start=datetime(2027, 6, 15, 19, 0), class_name=class_name
+            ),
+        )
+
+    goals = repository.get_user_bookings(66666666)
+
+    assert [g.class_name for g in goals] == ["Halterofilia", "WOD"]
+
+
 # ── serialization roundtrip ───────────────────────────────────────────────────
 
 def test_datetime_serialization_roundtrip(tmp_path):

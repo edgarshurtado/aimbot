@@ -49,16 +49,27 @@ class JsonRepository(IUserRepository, IBookingRepository):
             "name": goal.class_name,
         }
 
-    def _raw_to_user(self, raw_entry: dict) -> User:
-        raw_user = raw_entry["user"]
-        booking_goals = [
+    def _raw_to_booking_goals(self, raw_entry: dict) -> list[BookingGoal]:
+        """The entry's goals, soonest first — the order they will be attempted in.
+
+        The stored file stays an append log, so the ordering is applied on read:
+        entries are provisioned by hand, which makes a sorted-file invariant one
+        nothing could enforce. Sorting on class_start alone leaves ties in the
+        stored order, which is the best available answer for two goals sharing a
+        start time — a state aimharder refuses and FitBot will too.
+        """
+        goals = [
             self._raw_to_booking_goal(bg) for bg in raw_entry.get("bookingGoals", [])
         ]
+        return sorted(goals, key=lambda goal: goal.class_start)
+
+    def _raw_to_user(self, raw_entry: dict) -> User:
+        raw_user = raw_entry["user"]
         return User(
             id=raw_user["id"],
             email=raw_user["email"],
             password=raw_user["password"],
-            booking_goals=booking_goals,
+            booking_goals=self._raw_to_booking_goals(raw_entry),
         )
 
     # ── IUserRepository ───────────────────────────────────────────────────────
@@ -78,7 +89,7 @@ class JsonRepository(IUserRepository, IBookingRepository):
         raw = self._find_raw_user(user_id)
         if raw is None:
             return []
-        return [self._raw_to_booking_goal(bg) for bg in raw.get("bookingGoals", [])]
+        return self._raw_to_booking_goals(raw)
 
     def add_booking_goal(self, user_id: int, goal: BookingGoal) -> None:
         raw = self._find_raw_user(user_id)
