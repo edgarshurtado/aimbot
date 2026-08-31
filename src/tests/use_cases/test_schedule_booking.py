@@ -3,12 +3,11 @@ import pytest
 from datetime import datetime
 
 from domain.exceptions import UserNotFound
-from domain.models import User, BookingGoal
+from domain.models import User, BookingGoal, BookingSchedule
 from domain.ports.gym_config import IGymConfig
 from domain.ports.scheduler import IJobScheduler
 from application.use_cases.schedule_booking import ScheduleBookingUseCase
 from tests.fakes import InMemoryBookingRepository, InMemoryUserRepository
-
 
 DEFAULT_USER = User(id=123, email="a@b.com", password="pw")
 
@@ -57,9 +56,7 @@ def test_schedule_booking_creates_job_and_persists_goal(
     assert booking_repo.get_user_bookings(DEFAULT_USER.id) == [expected_goal]
 
 
-def test_schedule_booking_user_not_found(
-    booking_repo, scheduler, gym_config
-):
+def test_schedule_booking_user_not_found(booking_repo, scheduler, gym_config):
     empty_user_repo = InMemoryUserRepository()
     uc = ScheduleBookingUseCase(empty_user_repo, booking_repo, scheduler, gym_config)
 
@@ -100,3 +97,13 @@ def test_schedule_booking_does_not_depend_on_execute_use_case():
     sig = inspect.signature(ScheduleBookingUseCase.__init__)
     param_names = list(sig.parameters.keys())
     assert not any("execute" in p.lower() for p in param_names)
+
+
+def test_scheduled_goals_come_back_as_a_schedule(schedule_uc, booking_repo, gym_config):
+    """The in-memory repository keeps the same promise the real one does."""
+    gym_config.booking_trigger_time.return_value = datetime(2027, 3, 12, 18, 30)
+    goal = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+
+    schedule_uc.execute(user_id=DEFAULT_USER.id, booking_goal=goal)
+
+    assert isinstance(booking_repo.get_user_bookings(DEFAULT_USER.id), BookingSchedule)

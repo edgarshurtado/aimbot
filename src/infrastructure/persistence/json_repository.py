@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 from domain.exceptions import UserNotFound
-from domain.models import User, BookingGoal
+from domain.models import User, BookingGoal, BookingSchedule
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.user_repository import IUserRepository
 
@@ -21,7 +21,9 @@ class JsonRepository(IUserRepository, IBookingRepository):
         if os.path.isabs(self._db_file_name):
             return self._db_file_name
         # Resolve relative to src/ directory (two levels up from this file).
-        src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        src_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         return os.path.join(src_dir, self._db_file_name)
 
     def _load(self) -> list:
@@ -49,19 +51,16 @@ class JsonRepository(IUserRepository, IBookingRepository):
             "name": goal.class_name,
         }
 
-    def _raw_to_booking_goals(self, raw_entry: dict) -> list[BookingGoal]:
+    def _raw_to_booking_goals(self, raw_entry: dict) -> BookingSchedule:
         """The entry's goals, soonest first — the order they will be attempted in.
 
-        The stored file stays an append log, so the ordering is applied on read:
-        entries are provisioned by hand, which makes a sorted-file invariant one
-        nothing could enforce. Sorting on class_start alone leaves ties in the
-        stored order, which is the best available answer for two goals sharing a
-        start time — a state aimharder refuses and FitBot will too.
+        The stored file stays an append log: entries are provisioned by hand,
+        which makes a sorted-file invariant one nothing could enforce. Ordering
+        is applied on read, by the type.
         """
-        goals = [
+        return BookingSchedule(
             self._raw_to_booking_goal(bg) for bg in raw_entry.get("bookingGoals", [])
-        ]
-        return sorted(goals, key=lambda goal: goal.class_start)
+        )
 
     def _raw_to_user(self, raw_entry: dict) -> User:
         raw_user = raw_entry["user"]
@@ -85,10 +84,10 @@ class JsonRepository(IUserRepository, IBookingRepository):
 
     # ── IBookingRepository ────────────────────────────────────────────────────
 
-    def get_user_bookings(self, user_id: int) -> list[BookingGoal]:
+    def get_user_bookings(self, user_id: int) -> BookingSchedule:
         raw = self._find_raw_user(user_id)
         if raw is None:
-            return []
+            return BookingSchedule()
         return self._raw_to_booking_goals(raw)
 
     def add_booking_goal(self, user_id: int, goal: BookingGoal) -> None:
@@ -101,8 +100,10 @@ class JsonRepository(IUserRepository, IBookingRepository):
         # Dedup: if a goal with the same (class_start, name) exists, keep it as-is
         raw_goal = self._booking_goal_to_raw(goal)
         for existing in goals_list:
-            if (existing["datetime"] == raw_goal["datetime"]
-                    and existing["name"] == raw_goal["name"]):
+            if (
+                existing["datetime"] == raw_goal["datetime"]
+                and existing["name"] == raw_goal["name"]
+            ):
                 self._save()
                 return
 
@@ -115,7 +116,8 @@ class JsonRepository(IUserRepository, IBookingRepository):
             return
         date_str = goal.class_start.strftime(self._DATETIME_FMT)
         raw["bookingGoals"] = [
-            bg for bg in raw.get("bookingGoals", [])
+            bg
+            for bg in raw.get("bookingGoals", [])
             if not (bg["datetime"] == date_str and bg["name"] == goal.class_name)
         ]
         self._save()

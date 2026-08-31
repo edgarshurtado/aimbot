@@ -1,13 +1,8 @@
 from dataclasses import replace
 
-from domain.models import BookingGoal, User
+from domain.models import BookingGoal, BookingSchedule, User
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.user_repository import IUserRepository
-
-
-def _soonest_first(goals: list[BookingGoal]) -> list[BookingGoal]:
-    """The ordering both repository ports promise. See IBookingRepository."""
-    return sorted(goals, key=lambda goal: goal.class_start)
 
 
 class InMemoryUserRepository(IUserRepository):
@@ -29,8 +24,8 @@ class InMemoryBookingRepository(IBookingRepository):
     def __init__(self) -> None:
         self._bookings: dict[int, list[BookingGoal]] = {}
 
-    def get_user_bookings(self, user_id: int) -> list[BookingGoal]:
-        return _soonest_first(self._bookings.get(user_id, []))
+    def get_user_bookings(self, user_id: int) -> BookingSchedule:
+        return BookingSchedule(self._bookings.get(user_id, []))
 
     def add_booking_goal(self, user_id: int, goal: BookingGoal) -> None:
         self._bookings.setdefault(user_id, []).append(goal)

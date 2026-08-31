@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 
 from domain.exceptions import UserNotFound
-from domain.models import User, BookingGoal
+from domain.models import User, BookingGoal, BookingSchedule
 from infrastructure.persistence.json_repository import JsonRepository
 
 
@@ -23,6 +23,7 @@ def repository(tmp_path):
 
 # ── get_user ──────────────────────────────────────────────────────────────────
 
+
 def test_get_user_returns_domain_user_object(repository):
     result = repository.get_user(66666666)
     assert isinstance(result, User)
@@ -39,6 +40,7 @@ def test_get_user_returns_none_for_unknown_user(repository):
 
 # ── get_all_users ─────────────────────────────────────────────────────────────
 
+
 def test_get_all_users_returns_list_of_user_objects(repository):
     result = repository.get_all_users()
     assert isinstance(result, list)
@@ -48,6 +50,7 @@ def test_get_all_users_returns_list_of_user_objects(repository):
 
 
 # ── get_user_bookings ─────────────────────────────────────────────────────────
+
 
 def test_get_user_bookings_returns_empty_list(repository):
     result = repository.get_user_bookings(66666666)
@@ -62,13 +65,14 @@ def test_get_user_bookings_returns_booking_goal_objects(repository):
     repository.add_booking_goal(66666666, goal)
 
     result = repository.get_user_bookings(66666666)
-    assert isinstance(result, list)
+    assert isinstance(result, BookingSchedule)
     assert len(result) == 1
     assert isinstance(result[0], BookingGoal)
     assert isinstance(result[0].class_start, datetime)
 
 
 # ── add_booking_goal ──────────────────────────────────────────────────────────
+
 
 def test_add_booking_goal_succeeds_for_known_user(repository):
     goal = BookingGoal(
@@ -103,6 +107,7 @@ def test_add_booking_goal_dedup_does_not_duplicate(repository):
 
 # ── remove_booking_goal ───────────────────────────────────────────────────────
 
+
 def test_remove_booking_goal(repository):
     goal = BookingGoal(class_start=datetime(2027, 2, 10, 9, 0), class_name="WOD")
     repository.add_booking_goal(66666666, goal)
@@ -114,6 +119,7 @@ def test_remove_booking_goal(repository):
 
 
 # ── adversarial edge cases ────────────────────────────────────────────────────
+
 
 def test_dedup_does_not_fire_when_only_name_matches(repository):
     """Same name, different class_start → should NOT dedup."""
@@ -140,7 +146,8 @@ def test_dedup_does_not_fire_when_only_date_matches(repository):
 def test_remove_nonexistent_goal_is_safe(repository):
     """Removing a non-existent goal should not raise."""
     repository.remove_booking_goal(
-        66666666, BookingGoal(class_start=datetime(2099, 1, 1, 0, 0), class_name="NONEXISTENT")
+        66666666,
+        BookingGoal(class_start=datetime(2099, 1, 1, 0, 0), class_name="NONEXISTENT"),
     )
     assert repository.get_user_bookings(66666666) == []
 
@@ -154,6 +161,7 @@ def test_get_user_returns_deep_copy(repository):
 
 
 # ── booking goal ordering ─────────────────────────────────────────────────────
+
 
 def _add_out_of_order(repository):
     """Three goals added back to front, so insertion order reverses the real one."""
@@ -186,6 +194,16 @@ def test_get_user_returns_goals_soonest_first(repository):
         datetime(2027, 6, 18, 19, 0),
         datetime(2027, 6, 22, 7, 0),
     ]
+
+
+def test_get_user_bookings_hands_back_a_schedule_that_cannot_be_reordered(repository):
+    """The port promises an ordering; the type is what keeps the promise."""
+    _add_out_of_order(repository)
+
+    goals = repository.get_user_bookings(66666666)
+
+    assert isinstance(goals, BookingSchedule)
+    assert not hasattr(goals, "append")
 
 
 def test_ordering_survives_a_hand_edited_file(tmp_path):
@@ -235,6 +253,7 @@ def test_goals_sharing_a_start_time_keep_their_stored_order(repository):
 
 
 # ── serialization roundtrip ───────────────────────────────────────────────────
+
 
 def test_datetime_serialization_roundtrip(tmp_path):
     import shutil
