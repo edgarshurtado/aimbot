@@ -36,7 +36,7 @@ src/
 ├── constants.py                         # aimharder URL/endpoint constants
 ├── schedule.json                        # JSON-backed user + booking-goal store
 ├── domain/                              # pure: no I/O, no framework imports
-│   ├── models.py                        # User, BookingGoal, GymClass dataclasses
+│   ├── models.py                        # User, BookingGoal, GymClass, BookingSchedule
 │   ├── exceptions.py                    # BookingFailed, AuthenticationFailed, UserNotFound
 │   └── ports/                           # abstract interfaces (ABCs)
 │       ├── user_repository.py           # IUserRepository
