@@ -534,6 +534,21 @@ def test_raw_booking_missing_fields_default_to_zero():
     assert raw.spots_available == 0
 
 
+def test_raw_booking_coerces_string_counts_to_int():
+    raw = RawBooking.from_dict(
+        {
+            "id": "1",
+            "className": "WOD",
+            "timeid": "1100_60",
+            "limit": "20",
+            "ocupation": "15",
+        }
+    )
+    assert raw.limit == 20
+    assert raw.ocupation == 15
+    assert raw.spots_available == 5
+
+
 def test_raw_booking_to_gym_class():
     raw = RawBooking.from_dict(
         {

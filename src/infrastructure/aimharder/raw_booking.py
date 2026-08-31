@@ -24,8 +24,8 @@ class RawBooking:
             id=str(data["id"]),
             class_name=data["className"],
             timeid=data["timeid"],
-            limit=data.get("limit", 0),
-            ocupation=data.get("ocupation", 0),
+            limit=int(data.get("limit", 0)),
+            ocupation=int(data.get("ocupation", 0)),
         )
 
     @property
