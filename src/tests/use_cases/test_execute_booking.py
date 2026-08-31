@@ -59,8 +59,6 @@ def test_execute_booking_happy_path(
         GymClass(
             name="WOD",
             class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=5,
-            max_spots=20,
         )
     ]
 
@@ -70,8 +68,6 @@ def test_execute_booking_happy_path(
         GymClass(
             name="WOD",
             class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=5,
-            max_spots=20,
         )
     )
     assert booking_repo.get_user_bookings(DEFAULT_USER.id) == []
@@ -88,20 +84,14 @@ def test_execute_booking_matches_by_time_and_name(
         GymClass(
             name="OPEN",
             class_start=datetime(2027, 3, 15, 10, 0),
-            spots_available=1,
-            max_spots=10,
         ),
         GymClass(
             name="WOD",
             class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=1,
-            max_spots=10,
         ),
         GymClass(
             name="WOD",
             class_start=datetime(2027, 3, 15, 10, 0),
-            spots_available=1,
-            max_spots=10,
         ),
     ]
 
@@ -111,8 +101,6 @@ def test_execute_booking_matches_by_time_and_name(
         GymClass(
             name="WOD",
             class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=1,
-            max_spots=10,
         )
     )
 
@@ -132,8 +120,6 @@ def test_execute_booking_no_matching_class_raises(execute_uc, mock_client):
         GymClass(
             name="OPEN",
             class_start=datetime(2027, 3, 15, 10, 0),
-            spots_available=1,
-            max_spots=10,
         )
     ]
 
@@ -155,8 +141,6 @@ def test_execute_booking_does_not_settle_for_a_name_that_merely_contains_the_goa
         GymClass(
             name="WOD KIDS",
             class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=5,
-            max_spots=20,
         )
     ]
 
@@ -186,8 +170,6 @@ def test_execute_booking_creates_client_with_user_credentials(
         GymClass(
             name="WOD",
             class_start=datetime(2027, 3, 15, 18, 30),
-            spots_available=1,
-            max_spots=10,
         )
     ]
 

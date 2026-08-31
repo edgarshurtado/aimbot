@@ -7,8 +7,6 @@ from datetime import datetime
 class GymClass:
     name: str
     class_start: datetime
-    spots_available: int
-    max_spots: int
 
 
 @dataclass

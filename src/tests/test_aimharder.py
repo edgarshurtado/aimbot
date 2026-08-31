@@ -207,8 +207,6 @@ def test_get_classes_returns_gym_class_objects(http_mock):
     assert isinstance(gym_class, GymClass)
     assert gym_class.name == "WOD"
     assert gym_class.class_start == datetime(2027, 3, 15, 11, 0)
-    assert gym_class.spots_available == 5
-    assert gym_class.max_spots == 20
 
 
 def test_get_classes_empty_bookings(http_mock):
@@ -264,8 +262,6 @@ def test_book_class_success(http_mock):
     gym_class = GymClass(
         name="WOD",
         class_start=datetime(2027, 3, 2, 11, 0),
-        spots_available=5,
-        max_spots=20,
     )
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
@@ -281,8 +277,6 @@ def test_book_class_no_credit(http_mock):
     gym_class = GymClass(
         name="WOD",
         class_start=datetime(2027, 3, 2, 11, 0),
-        spots_available=5,
-        max_spots=20,
     )
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
@@ -300,8 +294,6 @@ def test_book_class_error_response(http_mock):
     gym_class = GymClass(
         name="WOD",
         class_start=datetime(2027, 3, 2, 11, 0),
-        spots_available=5,
-        max_spots=20,
     )
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
@@ -322,8 +314,6 @@ def test_book_class_server_error(http_mock):
     gym_class = GymClass(
         name="WOD",
         class_start=datetime(2027, 3, 2, 11, 0),
-        spots_available=5,
-        max_spots=20,
     )
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
@@ -349,8 +339,6 @@ def test_book_class_rejects_logout_sentinel(http_mock):
     gym_class = GymClass(
         name="WOD",
         class_start=datetime(2027, 3, 2, 11, 0),
-        spots_available=5,
-        max_spots=20,
     )
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
@@ -401,20 +389,36 @@ def test_get_classes_normalizes_3digit_timeid(http_mock):
     assert result[0].class_start == datetime(2027, 3, 15, 9, 0)
 
 
-def test_get_classes_missing_plazas_defaults_to_zero(http_mock):
-    """Missing ocupation/limit should not crash — default to 0."""
+def test_get_classes_ignores_occupancy_fields(http_mock):
+    """Occupancy is none of FitBot's business, whatever shape it arrives in.
+
+    The platform reports a full class's limit as a display string — '18 (3)' is
+    18 spots with 3 people waitlisted — which crashed the listing back when we
+    parsed these into numbers nothing ever read. A class missing them entirely
+    has to parse just as happily.
+    """
     _mock_login_success(http_mock)
     client = AimHarderClient("foo@bar.com", "pass", BOX_ID, BOX_NAME)
 
     http_mock.add(
         rsps_lib.GET,
         classes_endpoint(BOX_NAME),
-        json={"bookings": [{"id": "5", "timeid": "1200_60", "className": "WOD"}]},
+        json={
+            "bookings": [
+                {
+                    "id": "5",
+                    "timeid": "1200_60",
+                    "className": "WOD",
+                    "ocupation": 18,
+                    "limit": "18 (3)",
+                },
+                {"id": "6", "timeid": "1300_60", "className": "Open Box"},
+            ]
+        },
     )
 
     result = client.get_classes(datetime(2027, 3, 15))
-    assert result[0].max_spots == 0
-    assert result[0].spots_available == 0
+    assert [c.name for c in result] == ["WOD", "Open Box"]
 
 
 # ── Request timeouts ──────────────────────────────────────────────────────────
@@ -455,8 +459,6 @@ def test_booking_request_carries_a_timeout(http_mock, mocker):
     gym_class = GymClass(
         name="WOD",
         class_start=datetime(2027, 3, 2, 11, 0),
-        spots_available=5,
-        max_spots=20,
     )
     client._id_map[("WOD", datetime(2027, 3, 2, 11, 0))] = "42"
 
@@ -510,43 +512,6 @@ def test_raw_booking_from_dict():
     assert raw.id == "42"
     assert raw.class_name == "WOD"
     assert raw.timeid == "1100_60"
-    assert raw.limit == 20
-    assert raw.ocupation == 15
-
-
-def test_raw_booking_spots_available():
-    raw = RawBooking.from_dict(
-        {
-            "id": "1",
-            "className": "WOD",
-            "timeid": "1100_60",
-            "limit": 20,
-            "ocupation": 15,
-        }
-    )
-    assert raw.spots_available == 5
-
-
-def test_raw_booking_missing_fields_default_to_zero():
-    raw = RawBooking.from_dict({"id": "1", "className": "WOD", "timeid": "1100_60"})
-    assert raw.limit == 0
-    assert raw.ocupation == 0
-    assert raw.spots_available == 0
-
-
-def test_raw_booking_coerces_string_counts_to_int():
-    raw = RawBooking.from_dict(
-        {
-            "id": "1",
-            "className": "WOD",
-            "timeid": "1100_60",
-            "limit": "20",
-            "ocupation": "15",
-        }
-    )
-    assert raw.limit == 20
-    assert raw.ocupation == 15
-    assert raw.spots_available == 5
 
 
 def test_raw_booking_to_gym_class():
@@ -563,5 +528,3 @@ def test_raw_booking_to_gym_class():
     assert isinstance(gym_class, GymClass)
     assert gym_class.name == "WOD"
     assert gym_class.class_start == datetime(2027, 3, 15, 11, 0)
-    assert gym_class.max_spots == 20
-    assert gym_class.spots_available == 5

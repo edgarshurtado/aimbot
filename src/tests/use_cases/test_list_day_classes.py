@@ -16,8 +16,6 @@ def _gym_class(name: str, hour: int, minute: int = 0) -> GymClass:
     return GymClass(
         name=name,
         class_start=datetime(2027, 3, 15, hour, minute),
-        spots_available=5,
-        max_spots=20,
     )
 
 

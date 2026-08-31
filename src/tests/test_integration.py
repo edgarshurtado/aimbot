@@ -154,7 +154,7 @@ def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
 
     mock_client = MagicMock()
     mock_client.get_classes.return_value = [
-        GymClass(name="WOD", class_start=datetime(2027, 6, 15, 10, 0), spots_available=5, max_spots=20)
+        GymClass(name="WOD", class_start=datetime(2027, 6, 15, 10, 0))
     ]
     mock_factory = MagicMock(spec=IGymClientFactory)
     mock_factory.create.return_value = mock_client

@@ -15,8 +15,6 @@ class RawBooking:
     id: str
     class_name: str
     timeid: str
-    limit: int
-    ocupation: int
 
     @classmethod
     def from_dict(cls, data: dict) -> "RawBooking":
@@ -24,18 +22,10 @@ class RawBooking:
             id=str(data["id"]),
             class_name=data["className"],
             timeid=data["timeid"],
-            limit=int(data.get("limit", 0)),
-            ocupation=int(data.get("ocupation", 0)),
         )
-
-    @property
-    def spots_available(self) -> int:
-        return self.limit - self.ocupation
 
     def to_gym_class(self, day: date) -> GymClass:
         return GymClass(
             name=self.class_name,
             class_start=datetime.combine(day, _normalize_timeid(self.timeid)),
-            max_spots=self.limit,
-            spots_available=self.spots_available,
         )
