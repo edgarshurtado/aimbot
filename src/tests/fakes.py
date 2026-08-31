@@ -18,7 +18,8 @@ class InMemoryUserRepository(IUserRepository):
         user = self._users.get(user_id)
         if user is None:
             return None
-        return replace(user, booking_goals=_soonest_first(user.booking_goals))
+        # A copy, so a caller holding the result cannot reach into the store.
+        return replace(user)
 
     def get_all_users(self) -> list[User]:
         return [self.get_user(user_id) for user_id in self._users]

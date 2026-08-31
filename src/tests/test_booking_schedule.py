@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pytest
 
-from domain.models import BookingGoal, BookingSchedule
+from domain.models import BookingGoal, BookingSchedule, User
 
 EARLIEST = BookingGoal(class_start=datetime(2027, 6, 15, 10, 0), class_name="WOD")
 MIDDLE = BookingGoal(
@@ -85,3 +85,20 @@ def test_a_copy_of_the_goals_survives_the_caller_mutating_theirs():
     goals.clear()
 
     assert list(schedule) == [EARLIEST, LATEST]
+
+
+# ── User ──────────────────────────────────────────────────────────────────────
+
+
+def test_user_orders_the_goals_it_is_handed():
+    """Any adapter building a User gets the ordering for free."""
+    user = User(id=1, email="a@b.com", password="pw", booking_goals=[LATEST, EARLIEST])
+
+    assert list(user.booking_goals) == [EARLIEST, LATEST]
+
+
+def test_user_without_goals_has_an_empty_schedule():
+    user = User(id=1, email="a@b.com", password="pw")
+
+    assert user.booking_goals == []
+    assert isinstance(user.booking_goals, BookingSchedule)

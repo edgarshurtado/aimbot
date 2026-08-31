@@ -62,4 +62,11 @@ class User:
     id: int
     email: str
     password: str
-    booking_goals: list[BookingGoal] = field(default_factory=list)
+    booking_goals: BookingSchedule = field(default_factory=BookingSchedule)
+
+    def __post_init__(self) -> None:
+        # Callers pass whatever they have — a list read off disk, a list built in
+        # a test. Normalizing here is what makes the ordering true of every User,
+        # whichever adapter built it.
+        if not isinstance(self.booking_goals, BookingSchedule):
+            self.booking_goals = BookingSchedule(self.booking_goals)
