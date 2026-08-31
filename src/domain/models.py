@@ -64,9 +64,14 @@ class User:
     password: str
     booking_goals: BookingSchedule = field(default_factory=BookingSchedule)
 
-    def __post_init__(self) -> None:
+    def __setattr__(self, name: str, value: object) -> None:
         # Callers pass whatever they have — a list read off disk, a list built in
-        # a test. Normalizing here is what makes the ordering true of every User,
-        # whichever adapter built it.
-        if not isinstance(self.booking_goals, BookingSchedule):
-            self.booking_goals = BookingSchedule(self.booking_goals)
+        # a test — and dataclasses route every field assignment through
+        # __setattr__, construction included. Normalizing here, rather than in
+        # __post_init__, is what makes the ordering true of every User at every
+        # point in its life, not just the moment it was built — a later
+        # `user.booking_goals = raw_list` is caught the same way the constructor
+        # is.
+        if name == "booking_goals" and not isinstance(value, BookingSchedule):
+            value = BookingSchedule(value)
+        object.__setattr__(self, name, value)

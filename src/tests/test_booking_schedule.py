@@ -102,3 +102,13 @@ def test_user_without_goals_has_an_empty_schedule():
 
     assert user.booking_goals == []
     assert isinstance(user.booking_goals, BookingSchedule)
+
+
+def test_reassigning_booking_goals_after_construction_still_orders_them():
+    """The guarantee holds at every assignment, not just at __init__."""
+    user = User(id=1, email="a@b.com", password="pw")
+
+    user.booking_goals = [LATEST, EARLIEST]
+
+    assert isinstance(user.booking_goals, BookingSchedule)
+    assert list(user.booking_goals) == [EARLIEST, LATEST]

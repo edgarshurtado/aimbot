@@ -1,4 +1,4 @@
-from dataclasses import replace
+import copy
 
 from domain.models import BookingGoal, BookingSchedule, User
 from domain.ports.booking_repository import IBookingRepository
@@ -13,8 +13,11 @@ class InMemoryUserRepository(IUserRepository):
         user = self._users.get(user_id)
         if user is None:
             return None
-        # A copy, so a caller holding the result cannot reach into the store.
-        return replace(user)
+        # A deep copy, so a caller holding the result — or mutating one of its
+        # BookingGoal entries — cannot reach into the store. dataclasses.replace
+        # is shallow and would share the BookingSchedule and its goals with the
+        # store; JsonRepository promises a real deep copy, so this fake must too.
+        return copy.deepcopy(user)
 
     def get_all_users(self) -> list[User]:
         return [self.get_user(user_id) for user_id in self._users]
