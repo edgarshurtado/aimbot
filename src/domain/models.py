@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import cast, overload
 
 
 @dataclass
@@ -31,6 +32,12 @@ class BookingSchedule(Sequence[BookingGoal]):
 
     def __init__(self, goals: Iterable[BookingGoal] = ()) -> None:
         self._goals = tuple(sorted(goals, key=lambda goal: goal.class_start))
+
+    @overload
+    def __getitem__(self, index: int) -> BookingGoal: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[BookingGoal, ...]: ...
 
     def __getitem__(self, index: int | slice) -> BookingGoal | tuple[BookingGoal, ...]:
         return self._goals[index]
@@ -71,5 +78,5 @@ class User:
         # `user.booking_goals = raw_list` is caught the same way the constructor
         # is.
         if name == "booking_goals" and not isinstance(value, BookingSchedule):
-            value = BookingSchedule(value)
+            value = BookingSchedule(cast(Iterable[BookingGoal], value))
         object.__setattr__(self, name, value)
