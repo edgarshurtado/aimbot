@@ -9,7 +9,7 @@ weaken.
 from datetime import datetime
 
 from domain.models import BookingGoal, User
-from tests.fakes import InMemoryUserRepository
+from tests.fakes import InMemoryBookingRepository, InMemoryUserRepository
 
 DEFAULT_USER = User(
     id=1,
@@ -30,3 +30,16 @@ def test_get_user_returns_deep_copy():
 
     user2 = repository.get_user(1)
     assert user2.booking_goals[0].class_name == "WOD"
+
+
+def test_remove_booking_goal_tolerates_an_absent_goal():
+    """JsonRepository ignores a goal that is not there, for known and unknown users alike."""
+    repository = InMemoryBookingRepository()
+    goal = DEFAULT_USER.booking_goals[0]
+
+    repository.remove_booking_goal(user_id=999, goal=goal)
+    repository.add_booking_goal(1, goal)
+    repository.remove_booking_goal(1, goal)
+    repository.remove_booking_goal(1, goal)
+
+    assert repository.get_user_bookings(1) == []
