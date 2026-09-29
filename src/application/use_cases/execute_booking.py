@@ -1,6 +1,6 @@
 from domain.exceptions import (
     BookingFailed,
-    MESSAGE_BOX_IS_CLOSED,
+    MESSAGE_TIMETABLE_EMPTY,
     MESSAGE_GYM_CLASS_NOT_FOUND,
     UserNotFound,
 )
@@ -33,7 +33,7 @@ class ExecuteBookingUseCase:
         classes = client.get_classes(booking_goal.class_start)
 
         if not classes:
-            raise BookingFailed(MESSAGE_BOX_IS_CLOSED)
+            raise BookingFailed(MESSAGE_TIMETABLE_EMPTY)
 
         matched = next(
             (

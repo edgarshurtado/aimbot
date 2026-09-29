@@ -3,7 +3,7 @@ from datetime import datetime
 
 from domain.exceptions import (
     BookingFailed,
-    MESSAGE_BOX_IS_CLOSED,
+    MESSAGE_TIMETABLE_EMPTY,
     MESSAGE_GYM_CLASS_NOT_FOUND,
     UserNotFound,
 )
@@ -150,10 +150,10 @@ def test_execute_booking_does_not_settle_for_a_name_that_merely_contains_the_goa
     mock_client.book_class.assert_not_called()
 
 
-def test_execute_booking_box_closed(execute_uc, mock_client):
+def test_execute_booking_timetable_empty(execute_uc, mock_client):
     mock_client.get_classes.return_value = []
 
-    with pytest.raises(BookingFailed, match=MESSAGE_BOX_IS_CLOSED):
+    with pytest.raises(BookingFailed, match=MESSAGE_TIMETABLE_EMPTY):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
 
