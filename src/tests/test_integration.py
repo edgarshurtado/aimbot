@@ -248,7 +248,7 @@ def _failure_execute_uc(schedule_path, send_fn):
         json_repo,
         json_repo,
         AimHarderClientFactory(gym),
-        TelegramUserNotifier(send_fn),
+        TelegramUserNotifier(send_fn, sleep=lambda seconds: None),
     )
 
 
@@ -395,4 +395,33 @@ def test_lapsed_goal_is_swept_without_an_attempt_or_a_message(
 
     assert len(http_mock.calls) == 0
     send_fn.assert_not_called()
+    assert _goals_on_disk(schedule_file_with_goal) == []
+
+
+def test_undeliverable_failure_message_still_consumes_the_goal_and_is_loud(
+    schedule_file_with_goal, http_mock
+):
+    """Discard comes before notify, so a Telegram outage cannot leave the goal alive."""
+    import responses
+    from constants import book_endpoint
+    from telegram.error import TimedOut
+    from domain.exceptions import BookingFailed
+    from domain.models import BookingGoal
+
+    _mock_login_ok(http_mock)
+    _mock_timetable_with_wod(http_mock)
+    http_mock.add(
+        responses.POST, book_endpoint(FAILURE_BOX_NAME), json={"errorMssg": "nope"}
+    )
+    send_fn = MagicMock(side_effect=TimedOut())
+    execute_uc = _failure_execute_uc(schedule_file_with_goal, send_fn)
+
+    with pytest.raises(TimedOut) as raised:
+        execute_uc.execute(
+            66666666, BookingGoal(class_start=FAILURE_GOAL_START, class_name="WOD")
+        )
+
+    # The operator's log shows the booking failure chained under the send failure.
+    assert isinstance(raised.value.__context__, BookingFailed)
+    assert send_fn.call_count == 3
     assert _goals_on_disk(schedule_file_with_goal) == []

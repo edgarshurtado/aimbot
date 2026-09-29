@@ -1,3 +1,6 @@
+import pytest
+from telegram.error import BadRequest, RetryAfter, TimedOut
+
 from domain.ports.notifier import IGroupNotifier, IUserNotifier
 from infrastructure.telegram.group_notifier import TelegramGroupNotifier
 from infrastructure.telegram.user_notifier import TelegramUserNotifier
@@ -65,3 +68,34 @@ def test_user_notifier_passes_user_id_as_chat_id(mocker):
 
     call_kwargs = send_fn.call_args.kwargs
     assert call_kwargs["chat_id"] == 99999
+
+
+def test_user_notifier_retries_a_timed_out_send(mocker):
+    send_fn = mocker.Mock(side_effect=[TimedOut(), None])
+    notifier = TelegramUserNotifier(send_fn, sleep=mocker.Mock())
+
+    notifier.notify_user(user_id=12345, message="hi")
+
+    assert send_fn.call_count == 2
+
+
+def test_user_notifier_does_not_retry_a_bad_request(mocker):
+    """BadRequest subclasses NetworkError, but resending it can never succeed."""
+    send_fn = mocker.Mock(side_effect=BadRequest("chat not found"))
+    notifier = TelegramUserNotifier(send_fn, sleep=mocker.Mock())
+
+    with pytest.raises(BadRequest):
+        notifier.notify_user(user_id=12345, message="hi")
+
+    assert send_fn.call_count == 1
+
+
+def test_user_notifier_waits_as_long_as_telegram_asks_before_retrying(mocker):
+    send_fn = mocker.Mock(side_effect=[RetryAfter(7), None])
+    sleep = mocker.Mock()
+    notifier = TelegramUserNotifier(send_fn, sleep=sleep)
+
+    notifier.notify_user(user_id=12345, message="hi")
+
+    assert send_fn.call_count == 2
+    sleep.assert_called_once_with(7)
