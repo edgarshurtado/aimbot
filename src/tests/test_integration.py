@@ -223,3 +223,176 @@ def test_json_repository_path_from_infrastructure_location():
     user = repo.get_user(66666666)
     assert user is not None
     assert user.email == "some-email@gmail.com"
+
+
+# ── Failed Booking Attempts: member told, goal consumed ──────────────────────
+
+FAILURE_GOAL_START = datetime(2027, 6, 15, 10, 0)
+FAILURE_BOX_NAME = "themonkeybox"
+FAILURE_AUTH_COOKIE = "amhrdrauth=token; domain=aimharder.com; path=/"
+
+
+def _failure_execute_uc(schedule_path, send_fn):
+    """Real use case, repository, gym client and notifier; only HTTP and Telegram are fakes."""
+    from infrastructure.persistence.json_repository import JsonRepository
+    from infrastructure.aimharder.client_factory import AimHarderClientFactory
+    from infrastructure.aimharder.gym_config import IAimHarderGym
+    from infrastructure.telegram.user_notifier import TelegramUserNotifier
+    from application.use_cases.execute_booking import ExecuteBookingUseCase
+
+    gym = MagicMock(spec=IAimHarderGym)
+    gym.box_id = 9824
+    gym.box_name = FAILURE_BOX_NAME
+    json_repo = JsonRepository(schedule_path)
+    return ExecuteBookingUseCase(
+        json_repo,
+        json_repo,
+        AimHarderClientFactory(gym),
+        TelegramUserNotifier(send_fn),
+    )
+
+
+def _goals_on_disk(schedule_path):
+    with open(schedule_path) as f:
+        return json.load(f)[0]["bookingGoals"]
+
+
+def _mock_login_ok(http_mock):
+    import responses
+    from constants import LOGIN_ENDPOINT
+
+    http_mock.add(
+        responses.POST,
+        LOGIN_ENDPOINT,
+        json={"user": {"id": 1}},
+        headers={"Set-Cookie": FAILURE_AUTH_COOKIE},
+    )
+
+
+def _mock_timetable_with_wod(http_mock):
+    import responses
+    from constants import classes_endpoint
+
+    http_mock.add(
+        responses.GET,
+        classes_endpoint(FAILURE_BOX_NAME),
+        json={"bookings": [{"id": "1", "timeid": "1000_60", "className": "WOD"}]},
+    )
+
+
+def test_rejected_booking_tells_the_member_and_consumes_the_goal(
+    schedule_file_with_goal, http_mock
+):
+    import responses
+    from constants import book_endpoint
+    from domain.exceptions import BookingFailed
+    from domain.models import BookingGoal
+
+    _mock_login_ok(http_mock)
+    _mock_timetable_with_wod(http_mock)
+    http_mock.add(
+        responses.POST, book_endpoint(FAILURE_BOX_NAME), json={"errorMssg": "nope"}
+    )
+    send_fn = MagicMock()
+    execute_uc = _failure_execute_uc(schedule_file_with_goal, send_fn)
+
+    with pytest.raises(BookingFailed):
+        execute_uc.execute(
+            66666666, BookingGoal(class_start=FAILURE_GOAL_START, class_name="WOD")
+        )
+
+    send_fn.assert_called_once_with(
+        chat_id=66666666,
+        message=(
+            "❌ Couldn't book WOD\n"
+            "📅 15/06/2027 10:00\n"
+            "The gym rejected the booking without saying why"
+        ),
+    )
+    assert _goals_on_disk(schedule_file_with_goal) == []
+
+
+def test_rejected_login_tells_the_member_and_consumes_the_goal(
+    schedule_file_with_goal, http_mock
+):
+    import responses
+    from constants import LOGIN_ENDPOINT
+    from domain.exceptions import AuthenticationFailed
+    from domain.models import BookingGoal
+
+    http_mock.add(
+        responses.POST,
+        LOGIN_ENDPOINT,
+        status=401,
+        json={"error": {"message": "LOGIN_ERROR_INVALID_CREDENTIALS"}},
+    )
+    send_fn = MagicMock()
+    execute_uc = _failure_execute_uc(schedule_file_with_goal, send_fn)
+
+    with pytest.raises(AuthenticationFailed):
+        execute_uc.execute(
+            66666666, BookingGoal(class_start=FAILURE_GOAL_START, class_name="WOD")
+        )
+
+    send_fn.assert_called_once_with(
+        chat_id=66666666,
+        message=(
+            "❌ Couldn't book WOD\n"
+            "📅 15/06/2027 10:00\n"
+            "FitBot couldn't sign in to your gym account."
+        ),
+    )
+    assert _goals_on_disk(schedule_file_with_goal) == []
+
+
+def test_unrecognized_fault_tells_the_member_without_a_stack_trace(
+    schedule_file_with_goal, http_mock
+):
+    import responses
+    from constants import classes_endpoint
+    from domain.models import BookingGoal
+
+    _mock_login_ok(http_mock)
+    http_mock.add(
+        responses.GET,
+        classes_endpoint(FAILURE_BOX_NAME),
+        status=502,
+        body="<html><body>Bad Gateway</body></html>",
+        content_type="text/html",
+    )
+    send_fn = MagicMock()
+    execute_uc = _failure_execute_uc(schedule_file_with_goal, send_fn)
+
+    with pytest.raises(ValueError):
+        execute_uc.execute(
+            66666666, BookingGoal(class_start=FAILURE_GOAL_START, class_name="WOD")
+        )
+
+    send_fn.assert_called_once_with(
+        chat_id=66666666,
+        message=(
+            "❌ Couldn't book WOD\n"
+            "📅 15/06/2027 10:00\n"
+            "Something went wrong on our side."
+        ),
+    )
+    assert _goals_on_disk(schedule_file_with_goal) == []
+
+
+def test_lapsed_goal_is_swept_without_an_attempt_or_a_message(
+    schedule_file_with_goal, http_mock
+):
+    from freezegun import freeze_time
+    from domain.models import BookingGoal
+
+    send_fn = MagicMock()
+    execute_uc = _failure_execute_uc(schedule_file_with_goal, send_fn)
+
+    with freeze_time(datetime(2027, 6, 15, 10, 1)):
+        execute_uc.execute(
+            66666666, BookingGoal(class_start=FAILURE_GOAL_START, class_name="WOD")
+        )
+
+    assert len(http_mock.calls) == 0
+    send_fn.assert_not_called()
+    assert _goals_on_disk(schedule_file_with_goal) == []

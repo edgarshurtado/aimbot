@@ -418,6 +418,8 @@ def test_a_class_that_vanishes_before_trigger_time_books_nothing(
     with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
         wiring.execute_uc.execute(USER_ID, goal)
 
-    # Nothing was booked and the goal survives for a human to deal with.
-    assert json_repo.get_user(USER_ID).booking_goals == [goal]
-    wiring.notifier.notify_user.assert_not_called()
+    # Nothing was booked; the attempt consumed the goal and told the member.
+    assert json_repo.get_user(USER_ID).booking_goals == []
+    wiring.notifier.notify_user.assert_called_once_with(
+        USER_ID, "❌ Couldn't book WOD\n📅 15/06/2027 18:30\nGym class not found"
+    )

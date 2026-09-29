@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from domain.exceptions import (
+    AuthenticationFailed,
     BookingFailed,
     MESSAGE_TIMETABLE_EMPTY,
     MESSAGE_GYM_CLASS_NOT_FOUND,
@@ -9,6 +12,9 @@ from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClientFactory
 from domain.ports.notifier import IUserNotifier
 from domain.ports.user_repository import IUserRepository
+
+MEMBER_MESSAGE_SIGN_IN = "FitBot couldn't sign in to your gym account."
+MEMBER_MESSAGE_UNKNOWN = "Something went wrong on our side."
 
 
 class ExecuteBookingUseCase:
@@ -25,6 +31,24 @@ class ExecuteBookingUseCase:
         self._user_notifier = user_notifier
 
     def execute(self, user_id: int, booking_goal: BookingGoal) -> None:
+        if booking_goal.class_start < datetime.now():
+            # A Lapsed Booking Goal is residue, not intent: nothing failed now,
+            # so it is swept without an attempt and without a message.
+            self._booking_repo.remove_booking_goal(user_id, booking_goal)
+            return
+
+        try:
+            self._attempt(user_id, booking_goal)
+        except Exception as exc:
+            # One attempt per goal: it is consumed whatever the outcome
+            # (ADR-0001). Re-raised so the scheduler still logs the traceback.
+            self._booking_repo.remove_booking_goal(user_id, booking_goal)
+            self._user_notifier.notify_user(
+                user_id, _failure_message(booking_goal, _member_reason(exc))
+            )
+            raise
+
+    def _attempt(self, user_id: int, booking_goal: BookingGoal) -> None:
         user = self._user_repo.get_user(user_id)
         if user is None:
             raise UserNotFound(f"User {user_id} not found")
@@ -45,11 +69,8 @@ class ExecuteBookingUseCase:
             None,
         )
         if matched is None:
-            raise BookingFailed(
-                f"{MESSAGE_GYM_CLASS_NOT_FOUND}: '{booking_goal.class_name}' at "
-                f"{booking_goal.class_start.strftime('%H:%M')} on "
-                f"{booking_goal.class_start.date()}"
-            )
+            # The member's message header already names the class and its time.
+            raise BookingFailed(MESSAGE_GYM_CLASS_NOT_FOUND)
 
         client.book_class(matched)
 
@@ -60,3 +81,19 @@ class ExecuteBookingUseCase:
             f"{booking_goal.class_start.strftime('%H:%M')}"
         )
         self._user_notifier.notify_user(user_id, msg)
+
+
+def _member_reason(exc: Exception) -> str:
+    if isinstance(exc, BookingFailed):
+        return str(exc)
+    if isinstance(exc, AuthenticationFailed):
+        return MEMBER_MESSAGE_SIGN_IN
+    return MEMBER_MESSAGE_UNKNOWN
+
+
+def _failure_message(booking_goal: BookingGoal, reason: str) -> str:
+    return (
+        f"❌ Couldn't book {booking_goal.class_name}\n"
+        f"📅 {booking_goal.class_start.strftime('%d/%m/%Y %H:%M')}\n"
+        f"{reason}"
+    )
