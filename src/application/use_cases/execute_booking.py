@@ -7,7 +7,7 @@ from domain.exceptions import (
     MESSAGE_GYM_CLASS_NOT_FOUND,
     UserNotFound,
 )
-from domain.models import BookingGoal
+from domain.models import BookingGoal, User
 from domain.ports.booking_repository import IBookingRepository
 from domain.ports.gym_client import IGymClientFactory
 from domain.ports.notifier import IUserNotifier
@@ -38,7 +38,7 @@ class ExecuteBookingUseCase:
             return
 
         try:
-            self._attempt(user_id, booking_goal)
+            user = self._attempt(user_id, booking_goal)
         except Exception as exc:
             # One attempt per goal: it is consumed whatever the outcome
             # (ADR-0001). Re-raised so the scheduler still logs the traceback.
@@ -48,7 +48,17 @@ class ExecuteBookingUseCase:
             )
             raise
 
-    def _attempt(self, user_id: int, booking_goal: BookingGoal) -> None:
+        # Outside the try: once the class is booked, a failure to record or
+        # confirm it must never reach the member as a failed booking.
+        self._booking_repo.remove_booking_goal(user_id, booking_goal)
+        msg = (
+            f"class booked for {user.email}: {booking_goal.class_name} "
+            f"{booking_goal.class_start.strftime('%H:%M')}"
+        )
+        self._user_notifier.notify_user(user_id, msg)
+
+    def _attempt(self, user_id: int, booking_goal: BookingGoal) -> User:
+        """Book the goal's class, or raise. Returns the member it was booked for."""
         user = self._user_repo.get_user(user_id)
         if user is None:
             raise UserNotFound(f"User {user_id} not found")
@@ -73,14 +83,7 @@ class ExecuteBookingUseCase:
             raise BookingFailed(MESSAGE_GYM_CLASS_NOT_FOUND)
 
         client.book_class(matched)
-
-        self._booking_repo.remove_booking_goal(user_id, booking_goal)
-
-        msg = (
-            f"class booked for {user.email}: {booking_goal.class_name} "
-            f"{booking_goal.class_start.strftime('%H:%M')}"
-        )
-        self._user_notifier.notify_user(user_id, msg)
+        return user
 
 
 def _member_reason(exc: Exception) -> str:
