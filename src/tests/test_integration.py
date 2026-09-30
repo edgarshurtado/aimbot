@@ -49,6 +49,15 @@ def schedule_file_with_goal(tmp_path):
     return str(dst)
 
 
+@pytest.fixture
+def at_trigger_time():
+    """Pin the clock ahead of schedule_file_with_goal's class, or it lapses once 2027 passes."""
+    from freezegun import freeze_time
+
+    with freeze_time(datetime(2027, 6, 12, 10, 0)):
+        yield
+
+
 # ── Test 1: no import errors ──────────────────────────────────────────────────
 
 
@@ -142,7 +151,9 @@ def test_startup_recovery_with_real_components(schedule_file_with_goal):
 # ── Test 4: execute booking with real repo and mocked HTTP ───────────────────
 
 
-def test_execute_booking_with_real_repo_mocked_http(schedule_file_with_goal):
+def test_execute_booking_with_real_repo_mocked_http(
+    schedule_file_with_goal, at_trigger_time
+):
     """ExecuteBookingUseCase uses real JsonRepository; gym HTTP is mocked."""
     from infrastructure.persistence.json_repository import JsonRepository
     from application.use_cases.execute_booking import ExecuteBookingUseCase
@@ -281,7 +292,7 @@ def _mock_timetable_with_wod(http_mock):
 
 
 def test_rejected_booking_tells_the_member_and_consumes_the_goal(
-    schedule_file_with_goal, http_mock
+    schedule_file_with_goal, http_mock, at_trigger_time
 ):
     import responses
     from constants import book_endpoint
@@ -313,7 +324,7 @@ def test_rejected_booking_tells_the_member_and_consumes_the_goal(
 
 
 def test_rejected_login_tells_the_member_and_consumes_the_goal(
-    schedule_file_with_goal, http_mock
+    schedule_file_with_goal, http_mock, at_trigger_time
 ):
     import responses
     from constants import LOGIN_ENDPOINT
@@ -346,7 +357,7 @@ def test_rejected_login_tells_the_member_and_consumes_the_goal(
 
 
 def test_unrecognized_fault_tells_the_member_without_a_stack_trace(
-    schedule_file_with_goal, http_mock
+    schedule_file_with_goal, http_mock, at_trigger_time
 ):
     import responses
     from constants import classes_endpoint
@@ -399,7 +410,7 @@ def test_lapsed_goal_is_swept_without_an_attempt_or_a_message(
 
 
 def test_undeliverable_failure_message_still_consumes_the_goal_and_is_loud(
-    schedule_file_with_goal, http_mock
+    schedule_file_with_goal, http_mock, at_trigger_time
 ):
     """Discard comes before notify, so a Telegram outage cannot leave the goal alive."""
     import responses
@@ -428,7 +439,7 @@ def test_undeliverable_failure_message_still_consumes_the_goal_and_is_loud(
 
 
 def test_undeliverable_confirmation_is_never_reported_as_a_failed_booking(
-    schedule_file_with_goal, http_mock
+    schedule_file_with_goal, http_mock, at_trigger_time
 ):
     """The class is booked; losing the confirmation must not tell the member otherwise."""
     import responses

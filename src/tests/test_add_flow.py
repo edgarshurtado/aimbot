@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock
 from urllib.parse import parse_qs
 
 import pytest
+from freezegun import freeze_time
 import responses as rsps_lib
 
 from constants import LOGIN_ENDPOINT, book_endpoint, classes_endpoint
@@ -415,8 +416,10 @@ def test_a_class_that_vanishes_before_trigger_time_books_nothing(
     _mock_login_success(http_mock)
     _mock_timetable(http_mock, [_booking("200", "1830_60", "WOD KIDS")])
 
-    with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
-        wiring.execute_uc.execute(USER_ID, goal)
+    # Pinned ahead of the class, or the goal lapses once 2027 passes.
+    with freeze_time(datetime(2027, 6, 12, 18, 30)):
+        with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
+            wiring.execute_uc.execute(USER_ID, goal)
 
     # Nothing was booked; the attempt consumed the goal and told the member.
     assert json_repo.get_user(USER_ID).booking_goals == []

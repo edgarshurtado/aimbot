@@ -1,6 +1,8 @@
 import pytest
 from datetime import datetime
 
+from freezegun import freeze_time
+
 from domain.exceptions import (
     BookingFailed,
     MESSAGE_TIMETABLE_EMPTY,
@@ -15,6 +17,13 @@ from tests.fakes import InMemoryBookingRepository, InMemoryUserRepository
 
 DEFAULT_USER = User(id=123, email="a@b.com", password="pw")
 DEFAULT_GOAL = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+
+
+@pytest.fixture(autouse=True)
+def at_trigger_time():
+    """Pin the clock ahead of DEFAULT_GOAL's class, or it lapses once 2027 passes."""
+    with freeze_time(datetime(2027, 3, 12, 18, 30)):
+        yield
 
 
 @pytest.fixture
