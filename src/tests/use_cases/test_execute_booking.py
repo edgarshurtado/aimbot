@@ -5,7 +5,6 @@ from freezegun import freeze_time
 
 from domain.exceptions import (
     BookingFailed,
-    MESSAGE_TIMETABLE_EMPTY,
     MESSAGE_GYM_CLASS_NOT_FOUND,
     UserNotFound,
 )
@@ -165,20 +164,22 @@ def test_execute_booking_does_not_settle_for_a_name_that_merely_contains_the_goa
     mock_client.book_class.assert_not_called()
 
 
-def test_execute_booking_timetable_empty(
+def test_execute_booking_timetable_emptied_since_scheduling(
     execute_uc, booking_repo, mock_client, user_notifier
 ):
+    """A goal is only ever picked from a published Timetable, so an empty one at
+    Trigger Time means the gym withdrew the day's classes: the goal's class is
+    simply no longer there."""
     booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
     mock_client.get_classes.return_value = []
 
-    with pytest.raises(BookingFailed, match=MESSAGE_TIMETABLE_EMPTY):
+    with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
     assert booking_repo.get_user_bookings(DEFAULT_USER.id) == []
     user_notifier.notify_user.assert_called_once_with(
         DEFAULT_USER.id,
-        "❌ Couldn't book WOD\n📅 15/03/2027 18:30\n"
-        "The gym hasn't published a timetable for that day",
+        "❌ Couldn't book WOD\n📅 15/03/2027 18:30\nGym class not found",
     )
 
 

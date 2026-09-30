@@ -3,7 +3,6 @@ from datetime import datetime
 from domain.exceptions import (
     AuthenticationFailed,
     BookingFailed,
-    MESSAGE_TIMETABLE_EMPTY,
     MESSAGE_GYM_CLASS_NOT_FOUND,
     UserNotFound,
 )
@@ -65,9 +64,6 @@ class ExecuteBookingUseCase:
 
         client = self._gym_client_factory.create(user)
         classes = client.get_classes(booking_goal.class_start)
-
-        if not classes:
-            raise BookingFailed(MESSAGE_TIMETABLE_EMPTY)
 
         matched = next(
             (

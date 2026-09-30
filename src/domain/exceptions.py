@@ -5,12 +5,11 @@ MESSAGE_LOGIN_NOT_AUTHENTICATED = (
     "Login returned no session cookie — credentials were not accepted"
 )
 MESSAGE_SESSION_EXPIRED = "Session is no longer authenticated — nothing was booked"
-MESSAGE_TIMETABLE_EMPTY = "The gym hasn't published a timetable for that day"
 MESSAGE_GYM_CLASS_NOT_FOUND = "Gym class not found"
 
 
 class BookingFailed(Exception):
-    """Any failure to complete a booking: class not found, empty timetable, no credit, platform error."""
+    """Any failure to complete a booking: class not found, no credit, platform error."""
 
     pass
 
