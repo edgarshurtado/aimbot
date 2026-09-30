@@ -4,7 +4,7 @@ status: accepted
 
 # Booking Attempts consume their Booking Goal
 
-FitBot makes one **Booking Attempt** per **Booking Goal**, at **Trigger Time**. Every attempt
+AimBot makes one **Booking Attempt** per **Booking Goal**, at **Trigger Time**. Every attempt
 discards its goal and reports the outcome to the member, whether it produced a **Booking** or
 failed, and regardless of *why* it failed. The alternative — keeping the goal alive when the
 failure says nothing about the goal itself — was rejected because it needs a
@@ -15,7 +15,7 @@ class of bug this change exists to remove.
 ## Considered options
 
 - **Discard only on a verdict.** Discard when the platform answered about this class (timetable
-  empty, class not in the timetable, no credit, booking rejected); keep the goal when FitBot never
+  empty, class not in the timetable, no credit, booking rejected); keep the goal when AimBot never
   got to ask (auth failure, timeout, malformed response). Rejected: two categories to define,
   classify and keep straight, and each new failure mode needs the right verdict at the moment it
   is introduced.
@@ -24,8 +24,8 @@ class of bug this change exists to remove.
 
 ## Consequences
 
-- A fault entirely on FitBot's side destroys goals it could in principle have kept. If aimharder
-  changes its login again, every member's every attempt raises `AuthenticationFailed`, and FitBot
+- A fault entirely on AimBot's side destroys goals it could in principle have kept. If aimharder
+  changes its login again, every member's every attempt raises `AuthenticationFailed`, and AimBot
   works through the store deleting every **Booking Goal**, one message at a time, for something a
   redeploy would have fixed. This is accepted knowingly, in exchange for a single code path.
 - **Lapsed Booking Goals** stop accumulating: no goal outlives its attempt, so no separate cleanup

@@ -12,7 +12,7 @@ This change makes every **Booking Attempt** report its outcome to the member and
 | # | Decision | Rationale |
 |---|----------|-----------|
 | 1 | A **Booking Attempt** is terminal. One goal, one attempt, no retries. | The **Booking Window** is a race; a retry policy has no natural stopping rule. Retrying is a separate feature. |
-| 2 | The goal is discarded on **every** outcome, regardless of why it failed. | One code path, no recoverable/unrecoverable taxonomy to maintain and keep correct. Accepted cost: a FitBot-side fault (e.g. a platform login change) deletes goals it could in principle have kept. |
+| 2 | The goal is discarded on **every** outcome, regardless of why it failed. | One code path, no recoverable/unrecoverable taxonomy to maintain and keep correct. Accepted cost: an AimBot-side fault (e.g. a platform login change) deletes goals it could in principle have kept. |
 | 3 | A **Lapsed Booking Goal** — class already started — is swept silently: no attempt, no message. | `CONTEXT.md` defines it as residue, not intent. Nothing failed *now*, so there is nothing to report. Without this, the first restart after deploy messages members about classes that ended months ago. |
 | 4 | Handled inside `ExecuteBookingUseCase`, which then **re-raises**. | The use case already owns notification via `IUserNotifier` (a domain port — no Telegram coupling). Re-raising preserves APScheduler's traceback logging, which matters because the member's message is deliberately curated. |
 | 5 | Discard first, then notify — on success and failure alike. | One rule, no asymmetry to explain. Avoids the false-alarm path where a lost confirmation leaves the goal alive, gets re-attempted, is rejected as a duplicate, and tells the member they failed to book a class they are booked into. |
@@ -32,7 +32,7 @@ Two constants become member-facing copy and need to say something true:
 
 - `MESSAGE_BOX_IS_CLOSED` → rename to `MESSAGE_TIMETABLE_EMPTY`, text
   `"The gym hasn't published a timetable for that day"`. The current name and text assert a cause
-  FitBot never checked — all it knows is that `get_classes` returned an empty list. The new wording
+  AimBot never checked — all it knows is that `get_classes` returned an empty list. The new wording
   also matches what the `/add` flow already says for the same condition (`bot.py:199`).
 - `MESSAGE_BOOKING_FAILED_UNKNOWN` → `"The gym rejected the booking without saying why"`.
   `"Unknown error"` tells the member nothing.
@@ -44,7 +44,7 @@ Callers to update: `execute_booking.py`, `tests/use_cases/test_execute_booking.p
 Add member-facing constants:
 
 ```python
-MEMBER_MESSAGE_SIGN_IN = "FitBot couldn't sign in to your gym account."
+MEMBER_MESSAGE_SIGN_IN = "AimBot couldn't sign in to your gym account."
 MEMBER_MESSAGE_UNKNOWN = "Something went wrong on our side."
 ```
 

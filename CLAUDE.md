@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-FitBot — Python bot that automates booking fitness classes on aimharder.com with a Telegram bot interface. Deployed via Docker.
+AimBot — Python bot that automates booking fitness classes on aimharder.com with a Telegram bot interface. Deployed via Docker.
 
 ## Commands
 

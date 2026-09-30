@@ -13,7 +13,7 @@ from domain.ports.gym_client import IGymClientFactory
 from domain.ports.notifier import IUserNotifier
 from domain.ports.user_repository import IUserRepository
 
-MEMBER_MESSAGE_SIGN_IN = "FitBot couldn't sign in to your gym account."
+MEMBER_MESSAGE_SIGN_IN = "AimBot couldn't sign in to your gym account."
 MEMBER_MESSAGE_UNKNOWN = "Something went wrong on our side."
 
 

@@ -1,4 +1,4 @@
-# FitBot
+# AimBot
 
 Books fitness classes on aimharder.com on a member's behalf, at the moment the gym first allows it.
 
@@ -29,11 +29,11 @@ The period during which the **Box** accepts bookings for a given **Gym Class** �
 _Avoid_: Booking period, availability window
 
 **Trigger Time**:
-The moment FitBot attempts to convert a **Booking Goal** into a **Booking**.
+The moment AimBot attempts to convert a **Booking Goal** into a **Booking**.
 _Avoid_: Schedule time, run time, execution time
 
 **Booking Attempt**:
-FitBot's one try at turning a **Booking Goal** into a **Booking**, made at **Trigger Time**.
+AimBot's one try at turning a **Booking Goal** into a **Booking**, made at **Trigger Time**.
 _Avoid_: Booking run, retry, execution
 
 **Lapsed Booking Goal**:
@@ -49,7 +49,7 @@ _Avoid_: Expired goal (suggests a deliberate TTL that nothing enforces), stale g
 - A **Booking Goal** lapses when its **Gym Class** starts. A **Lapsed Booking Goal** is swept without a message and without an attempt — nothing failed now, so there is nothing to report
 - A member's **Booking Goals** are ordered by the start time of the **Gym Class** each one targets, soonest first. Because **Trigger Time** is a fixed interval before the class starts, this is also the order in which they will be attempted: the chronologically first goal is always the next one to fire
 - Every **Gym Class** has exactly one **Booking Window**
-- **Trigger Time** is FitBot's *estimate* of when the **Booking Window** opens — the two are not the same thing
+- **Trigger Time** is AimBot's *estimate* of when the **Booking Window** opens — the two are not the same thing
 - A day's **Timetable** is published long before that day's **Booking Window** opens, so a member can see a **Gym Class** they cannot yet book
 - No two **Gym Classes** in one **Timetable** share both a name and a start time — the pair identifies a class within its day
 
@@ -65,8 +65,8 @@ _Avoid_: Expired goal (suggests a deliberate TTL that nothing enforces), stale g
 - "booking" was used to mean both the member's intent and the confirmed place at the gym — resolved: **Booking Goal** is the intent, **Booking** is the confirmed place. The code's `BookingGoal` model matches; the aimharder API's `bookings` field is a list of **Gym Classes**, not **Bookings**, which is a naming collision to watch for.
 - **Trigger Time** was treated as equivalent to the **Booking Window** opening — resolved: it is an estimate derived from `days_in_advance`, and its correctness is an open question, not an established fact.
 - A member's *stated* class was conflated with a *real* one — resolved: a **Booking Goal** now names a **Gym Class** the member picked out of a published **Timetable**, so the class is known to exist when the goal is made. It is still not known to be *bookable*: existence and availability are separate facts.
-- Open, not yet resolved: the platform appears to mark each **Gym Class** with whether it is currently bookable. If confirmed, the **Booking Window** becomes something FitBot can observe rather than estimate — which would settle the **Trigger Time** ambiguity above.
+- Open, not yet resolved: the platform appears to mark each **Gym Class** with whether it is currently bookable. If confirmed, the **Booking Window** becomes something AimBot can observe rather than estimate — which would settle the **Trigger Time** ambiguity above.
 - A **Booking Goal** that failed to book was treated as though it had simply not happened yet — resolved: it is a **Lapsed Booking Goal**, a distinct state. The definition of **Booking Goal** ("intent to obtain a place in a *future* **Gym Class**") stops applying the moment the class starts, so the two must not share a name.
 - A failed **Booking Attempt** and a **Lapsed Booking Goal** were used interchangeably — resolved: a failure is an outcome the member is told about; lapsing is residue swept in silence. What separates them is whether the **Gym Class** has already started.
-- An empty **Timetable** was reported as "Box is closed" — resolved: all FitBot observes is that the **Box** published no **Gym Classes** for that day; it never checks whether the box is open. The two must not be conflated, and the member-facing wording says the timetable is empty.
-- Open, not yet resolved: two **Booking Goals** may currently target **Gym Classes** with the same start time, which aimharder itself refuses. Once FitBot rejects that too, no two of a member's goals can share a start time, and their ordering becomes total on start time alone.
+- An empty **Timetable** was reported as "Box is closed" — resolved: all AimBot observes is that the **Box** published no **Gym Classes** for that day; it never checks whether the box is open. The two must not be conflated, and the member-facing wording says the timetable is empty.
+- Open, not yet resolved: two **Booking Goals** may currently target **Gym Classes** with the same start time, which aimharder itself refuses. Once AimBot rejects that too, no two of a member's goals can share a start time, and their ordering becomes total on start time alone.

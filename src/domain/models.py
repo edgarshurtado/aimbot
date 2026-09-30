@@ -27,7 +27,7 @@ class BookingSchedule(Sequence[BookingGoal]):
 
     Sorting on class_start alone leaves ties in the order given, which is the
     best available answer for two goals sharing a start time — a state aimharder
-    refuses and FitBot will too.
+    refuses and AimBot will too.
     """
 
     def __init__(self, goals: Iterable[BookingGoal] = ()) -> None:
