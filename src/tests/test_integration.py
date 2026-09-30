@@ -350,7 +350,7 @@ def test_rejected_login_tells_the_member_and_consumes_the_goal(
         message=(
             "❌ Couldn't book WOD\n"
             "📅 15/06/2027 10:00\n"
-            "FitBot couldn't sign in to your gym account."
+            "AimBot couldn't sign in to your gym account."
         ),
     )
     assert _goals_on_disk(schedule_file_with_goal) == []
