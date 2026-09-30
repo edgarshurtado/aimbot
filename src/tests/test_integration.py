@@ -317,7 +317,7 @@ def test_rejected_booking_tells_the_member_and_consumes_the_goal(
         message=(
             "❌ Couldn't book WOD\n"
             "📅 15/06/2027 10:00\n"
-            "The gym rejected the booking without saying why"
+            "The gym returned an error for the booking request"
         ),
     )
     assert _goals_on_disk(schedule_file_with_goal) == []

@@ -1,5 +1,5 @@
 MESSAGE_BOOKING_FAILED_NO_CREDIT = "No credit available"
-MESSAGE_BOOKING_FAILED_UNKNOWN = "The gym rejected the booking without saying why"
+MESSAGE_BOOKING_FAILED_UNKNOWN = "The gym returned an error for the booking request"
 MESSAGE_LOGIN_REJECTED = "Credentials rejected by the platform"
 MESSAGE_LOGIN_NOT_AUTHENTICATED = (
     "Login returned no session cookie — credentials were not accepted"
