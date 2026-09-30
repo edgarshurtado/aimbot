@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-FitBot — Python bot that automates booking fitness classes on aimharder.com with a Telegram bot interface. Deployed via Docker.
+AimBot — Python bot that automates booking fitness classes on aimharder.com with a Telegram bot interface. Deployed via Docker.
 
 ## Commands
 
@@ -102,3 +102,17 @@ Tests use `unittest.mock.patch` for HTTP mocking and `freezegun` for time. All e
 
 ### Testing
 - Every new feature or module must include tests
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues on `edgarshurtado/aimbot`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

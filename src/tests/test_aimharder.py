@@ -390,7 +390,7 @@ def test_get_classes_normalizes_3digit_timeid(http_mock):
 
 
 def test_get_classes_ignores_occupancy_fields(http_mock):
-    """Occupancy is none of FitBot's business, whatever shape it arrives in.
+    """Occupancy is none of AimBot's business, whatever shape it arrives in.
 
     The platform reports a full class's limit as a display string — '18 (3)' is
     18 spots with 3 people waitlisted — which crashed the listing back when we

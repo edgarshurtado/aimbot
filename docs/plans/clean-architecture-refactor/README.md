@@ -4,7 +4,7 @@
 > dependency graph and execution order, then read individual feature files for task details.
 > Dispatch a fresh subagent per task using the Task tool (subagent_type: "general-purpose").
 
-**Goal:** Refactor the FitBot codebase into clean architecture with domain, application, and infrastructure layers to decouple business logic from framework concerns.
+**Goal:** Refactor the AimBot codebase into clean architecture with domain, application, and infrastructure layers to decouple business logic from framework concerns.
 
 **Architecture:** Domain layer owns models, exceptions, and port interfaces. Application layer contains use cases (ScheduleBooking, ExecuteBooking, RemoveBooking) that orchestrate business logic through ports. Infrastructure layer provides concrete adapters (AimHarder HTTP client, JSON persistence, APScheduler, Telegram bot/notifiers). Composition root in `main.py` wires everything together.
 

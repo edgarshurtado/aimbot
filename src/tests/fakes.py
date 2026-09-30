@@ -34,4 +34,7 @@ class InMemoryBookingRepository(IBookingRepository):
         self._bookings.setdefault(user_id, []).append(goal)
 
     def remove_booking_goal(self, user_id: int, goal: BookingGoal) -> None:
-        self._bookings.get(user_id, []).remove(goal)
+        # Tolerant of an unknown user and an absent goal, like JsonRepository.
+        goals = self._bookings.get(user_id, [])
+        if goal in goals:
+            goals.remove(goal)

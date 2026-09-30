@@ -1,9 +1,10 @@
 import pytest
 from datetime import datetime
 
+from freezegun import freeze_time
+
 from domain.exceptions import (
     BookingFailed,
-    MESSAGE_BOX_IS_CLOSED,
     MESSAGE_GYM_CLASS_NOT_FOUND,
     UserNotFound,
 )
@@ -13,9 +14,15 @@ from domain.ports.notifier import IUserNotifier
 from application.use_cases.execute_booking import ExecuteBookingUseCase
 from tests.fakes import InMemoryBookingRepository, InMemoryUserRepository
 
-
 DEFAULT_USER = User(id=123, email="a@b.com", password="pw")
 DEFAULT_GOAL = BookingGoal(class_start=datetime(2027, 3, 15, 18, 30), class_name="WOD")
+
+
+@pytest.fixture(autouse=True)
+def at_trigger_time():
+    """Pin the clock ahead of DEFAULT_GOAL's class, or it lapses once 2027 passes."""
+    with freeze_time(datetime(2027, 3, 12, 18, 30)):
+        yield
 
 
 @pytest.fixture
@@ -105,9 +112,7 @@ def test_execute_booking_matches_by_time_and_name(
     )
 
 
-def test_execute_booking_user_not_found(
-    booking_repo, factory, user_notifier
-):
+def test_execute_booking_user_not_found(booking_repo, factory, user_notifier):
     empty_user_repo = InMemoryUserRepository()
     uc = ExecuteBookingUseCase(empty_user_repo, booking_repo, factory, user_notifier)
 
@@ -115,7 +120,10 @@ def test_execute_booking_user_not_found(
         uc.execute(999, DEFAULT_GOAL)
 
 
-def test_execute_booking_no_matching_class_raises(execute_uc, mock_client):
+def test_execute_booking_no_matching_class_raises(
+    execute_uc, booking_repo, mock_client, user_notifier
+):
+    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
     mock_client.get_classes.return_value = [
         GymClass(
             name="OPEN",
@@ -125,6 +133,12 @@ def test_execute_booking_no_matching_class_raises(execute_uc, mock_client):
 
     with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
+
+    assert booking_repo.get_user_bookings(DEFAULT_USER.id) == []
+    user_notifier.notify_user.assert_called_once_with(
+        DEFAULT_USER.id,
+        "❌ Couldn't book WOD\n📅 15/03/2027 18:30\nGym class not found",
+    )
 
 
 def test_execute_booking_does_not_settle_for_a_name_that_merely_contains_the_goal(
@@ -150,12 +164,23 @@ def test_execute_booking_does_not_settle_for_a_name_that_merely_contains_the_goa
     mock_client.book_class.assert_not_called()
 
 
-def test_execute_booking_box_closed(execute_uc, mock_client):
+def test_execute_booking_timetable_emptied_since_scheduling(
+    execute_uc, booking_repo, mock_client, user_notifier
+):
+    """A goal is only ever picked from a published Timetable, so an empty one at
+    Trigger Time means the gym withdrew the day's classes: the goal's class is
+    simply no longer there."""
+    booking_repo.add_booking_goal(DEFAULT_USER.id, DEFAULT_GOAL)
     mock_client.get_classes.return_value = []
 
-    with pytest.raises(BookingFailed, match=MESSAGE_BOX_IS_CLOSED):
+    with pytest.raises(BookingFailed, match=MESSAGE_GYM_CLASS_NOT_FOUND):
         execute_uc.execute(DEFAULT_USER.id, DEFAULT_GOAL)
 
+    assert booking_repo.get_user_bookings(DEFAULT_USER.id) == []
+    user_notifier.notify_user.assert_called_once_with(
+        DEFAULT_USER.id,
+        "❌ Couldn't book WOD\n📅 15/03/2027 18:30\nGym class not found",
+    )
 
 
 def test_execute_booking_creates_client_with_user_credentials(
